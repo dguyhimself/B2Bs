@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Apex Global | Node Registration</title>
+    <style>
+        body { background: #0a0e17; color: #f8fafc; font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .card { background: #131b2c; padding: 40px; border-radius: 12px; width: 100%; max-width: 400px; border: 1px solid rgba(255,255,255,0.08); }
+        h2 { text-align: center; color: white; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border-radius: 6px; border: 1px solid #334155; background: #0a0e17; color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; border: none; border-radius: 6px; background: #3b82f6; color: white; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        #message { text-align: center; font-size: 14px; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Agency Node Registration</h2>
+    <form id="regForm">
+        <input type="text" id="fullName" placeholder="Full Name" required>
+        <input type="text" id="country" placeholder="Country" required>
+        <input type="text" id="phoneNumber" placeholder="Phone Number" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <input type="text" id="referralCode" placeholder="Partner ID (Required)" required>
+        <button type="submit">Deploy Agency Node</button>
+    </form>
+    <div id="message"></div>
+</div>
+
+<script>
+    document.getElementById('regForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const msgDiv = document.getElementById('message');
+        msgDiv.innerText = "Processing...";
+
+        const payload = {
+            fullName: document.getElementById('fullName').value,
+            country: document.getElementById('country').value,
+            phoneNumber: document.getElementById('phoneNumber').value,
+            password: document.getElementById('password').value,
+            referralCode: document.getElementById('referralCode').value
+        };
+
+        try {
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                msgDiv.style.color = "#10b981";
+                msgDiv.innerText = "Success! Partner ID: " + data.partnerId;
+            } else {
+                msgDiv.style.color = "#ef4444";
+                msgDiv.innerText = "Error: " + data.error;
+            }
+        } catch (err) {
+            msgDiv.innerText = "Connection failed.";
+        }
+    });
+</script>
+
+</body>
+</html>

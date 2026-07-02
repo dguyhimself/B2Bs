@@ -1,0 +1,2376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ARCADE CRASH PRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        :root {
+            --bg-dark: #07070b;
+            --panel-bg: #11121d;
+            --panel-border: #23253b;
+            --cyan: #26ec00;
+            --magenta: #ff00ea;
+            --yellow: #ffd500;
+            --green: #39ff14;
+            --red: #ff3333;
+            --text-main: #ffffff;
+            --text-dim: #6c6f93;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; -webkit-tap-highlight-color: transparent; }
+        /* Hide default browser up/down arrows in number inputs */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'VT323', monospace;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative; /* <-- ADD THIS LINE */
+        }
+
+        /* Scanlines */
+        body::after {
+            content: ""; position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            z-index: 9999; background-size: 100% 4px, 6px 100%; pointer-events: none;
+        }
+
+        /* Audio Unlock Overlay */
+        #audio-overlay {
+            position: fixed; top:0; left:0; width:100vw; height:100dvh;
+            background: rgba(0,0,0,0.9); z-index: 10000;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            cursor: pointer;
+        }
+        .pulse-text { font-family: 'Press Start 2P'; font-size: 16px; color: var(--cyan); animation: pulse 1s infinite; text-align: center; line-height: 1.5; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        /* --- MODERNIZED HEADER --- */
+        #header { 
+            padding: 12px 15px; 
+            background: linear-gradient(180deg, #11121d 0%, #050508 100%);
+            border-bottom: 1px solid #1a1c29; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-start;
+            z-index: 10; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        /* Balance Group */
+        .bal-wrap { display: flex; flex-direction: column; gap: 6px; }
+        .bal-label-row { display: flex; align-items: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); letter-spacing: 1px; }
+        .bal-val-row { display: flex; align-items: baseline; gap: 8px; }
+        #balance-display { font-size: 28px; color: var(--yellow); text-shadow: 0 0 12px rgba(255, 213, 0, 0.4); line-height: 1; }
+        #balance-sol { font-size: 14px; color: var(--green); opacity: 0.8; letter-spacing: 1px; }
+
+        /* Refresh Button */
+        .arcade-refresh-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 20px; height: 20px; padding: 0;
+            background: var(--cyan); border: none; border-radius: 4px;
+            color: #000; cursor: pointer;
+            box-shadow: 0 2px 0 #009926, 0 0 8px rgba(2, 155, 48, 0.74);
+            transition: all 0.1s ease;
+        }
+        .arcade-refresh-btn:active { transform: translateY(2px); box-shadow: none; }
+        @keyframes iconSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .refreshing-active svg { animation: iconSpin 0.8s linear infinite; }
+
+        /* Right Side Actions */
+        .header-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+        .action-row { display: flex; align-items: center; gap: 15px; }
+
+        /* Web3 Deposit Pill */
+        .deposit-pill { 
+            background: #151726; 
+            border: none; 
+            color: var(--cyan); 
+            font-size: 16px; 
+            padding: 10px 10px; 
+            border-radius: 12px; 
+            cursor: pointer; 
+            display: flex; align-items: center; gap: 6px;
+            transition: all 0.2s ease;
+            text-shadow: 0 0 8px rgba(0, 243, 255, 0.3);
+        }
+        .deposit-pill:active { transform: scale(0.95); background: rgba(0, 166, 26, 0.05); }
+
+        /* --- DEDICATED HISTORY BAR --- */
+        #history-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; z-index: 20;
+            display: flex; align-items: center; padding: 6px 10px;
+            background: linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+        }
+        #history-bar {
+            flex: 1; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none;
+            align-items: center; white-space: nowrap; scroll-behavior: smooth;
+        }
+        #history-bar::-webkit-scrollbar { display: none; }
+
+        .hist-badge { 
+            font-family: 'VT323', monospace; font-size: 16px; padding: 2px 8px; 
+            border-radius: 4px; border: 1px solid #333; font-weight: bold;
+        }
+        /* Multiplier Tiers */
+        .hist-t1 { color: var(--text-dim); background: rgba(108, 111, 147, 0.1); border-color: rgba(108, 111, 147, 0.3); }
+        .hist-t2 { color: var(--green); background: rgba(57, 255, 20, 0.1); border-color: rgba(57, 255, 20, 0.3); box-shadow: 0 0 8px rgba(57,255,20,0.2); }
+        .hist-t3 { color: var(--yellow); background: rgba(255, 213, 0, 0.1); border-color: rgba(255, 213, 0, 0.3); box-shadow: 0 0 12px rgba(255,213,0,0.3); }
+        .hist-t4 { color: var(--magenta); background: rgba(255, 0, 234, 0.1); border-color: rgba(255, 0, 234, 0.3); box-shadow: 0 0 15px rgba(255,0,234,0.4); text-shadow: none;}
+
+        .history-btn {
+            background: rgba(0, 243, 255, 0.1); border: 1px solid var(--cyan); border-radius: 4px;
+            color: var(--cyan); cursor: pointer; padding: 4px; display: flex; justify-content: center;
+            align-items: center; margin-left: 8px; transition: 0.1s;
+        }
+        .history-btn:active { transform: scale(0.95); background: var(--cyan); color: #000; }
+
+        /* --- SLEEK HISTORY POPOVER --- */
+        #history-popover {
+            position: absolute;
+            top: 40px; /* Sits cleanly beneath the history button */
+            right: 10px;
+            width: 180px;
+            background: #11121d;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            box-shadow: none;
+            z-index: 9000;
+            display: flex;
+            flex-direction: column;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #history-popover.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+        .hp-header {
+            padding: 12px 15px;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            color: var(--text-dim);
+            border-bottom: 1px solid #1a1c29;
+            text-align: center;
+            letter-spacing: 0.5px;
+        }
+        .hp-list {
+            max-height: 250px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            padding: 8px;
+            gap: 4px;
+        }
+        /* Custom scrollbar to keep it compact */
+        .hp-list::-webkit-scrollbar { width: 4px; }
+        .hp-list::-webkit-scrollbar-thumb { background: #23253b; border-radius: 2px; }
+
+        .hp-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-family: 'VT323', monospace;
+            font-size: 18px;
+            transition: background 0.1s;
+        }
+        .hp-row:hover { background: rgba(255,255,255,0.03); }
+        .hp-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        /* --- SLEEK QR POPOVER --- */
+        /* --- SLEEK QR POPOVER --- */
+        #qr-popover {
+            position: absolute; /* <-- Changed from fixed */
+            top: 75px; 
+            right: 15px; 
+            background: #11121d;
+            border: none;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: none;
+            z-index: 9000; /* <-- Lowered to sit behind toast */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #qr-popover.show {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+        /* --- QR Loading Spinner --- */
+        .qr-spinner {
+            width: 30px;
+            height: 30px;
+            border: 4px solid #e0e0e0;
+            border-top: 4px solid #11121d;
+            border-radius: 50%;
+            animation: qr-spin 0.8s linear infinite;
+            position: absolute;
+        }
+        @keyframes qr-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .qr-title {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            color: var(--cyan);
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+        .qr-desc {
+            font-family: 'VT323', monospace;
+            font-size: 16px;
+            color: var(--text-main);
+        }
+
+        /* Main Viewport Container */
+        #main-view { flex: 1; position: relative; overflow: hidden; background: var(--bg-dark); }
+        .view-tab { position: absolute; top:0; left:0; width:100%; height:100%; display: none; flex-direction: column; }
+        .view-tab.active { display: flex; }
+
+        /* -- TAB: GAME -- */
+        /* -- TAB: GAME (Now Scrollable) -- */
+        /* FIX: Removed 'display: block' so tabs hide properly! */
+        /* FIX: Matched background perfectly to the Canvas Deep Space color! */
+        #view-game { overflow-y: auto; scroll-behavior: smooth; background: #020204; }
+
+        /* Wrapper to force full screen height */
+        .game-main-screen {
+            display: flex;
+            flex-direction: column;
+            min-height: 100%; /* Pushes everything below it off-screen */
+            flex-shrink: 0;
+        }
+
+        #game-container { 
+            flex: 1; 
+            position: relative; 
+            overflow: hidden; 
+            box-shadow: inset 0 -20px 50px rgba(2, 2, 4, 1); /* Soft shadow blending into space */
+            border-bottom: none; 
+            min-height: 35vh; /* Safety fallback for tiny screens */
+        }
+        #controls { flex-shrink: 0; }
+
+        /* --- GAME LIVE BETS PANEL --- */
+        #game-live-bets {
+            background: #11121d; /* Blends perfectly with the dark space theme now */
+            padding: 20px 15px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px;
+            border-top: 1px dashed #1a1c29; 
+        }
+
+        /* Total Pot & Round Stats Bar */
+        .round-stats-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(0, 166, 26, 0.05); border: none;
+            padding: 12px 15px; border-radius: 6px; margin-bottom: 8px;
+        }
+        .rs-label { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); margin-bottom: 6px; }
+        .rs-val { font-family: 'VT323', monospace; font-size: 24px; color: #fff; line-height: 1; }
+        .rs-pot { color: var(--green); text-shadow: 0 0 12px rgba(57, 255, 20, 0.4); }
+
+        .col-user { flex: 2; display: flex; align-items: center; gap: 6px; overflow: hidden; } 
+        .col-bet { flex: 1; text-align: right; } 
+        .col-mult { flex: 1; text-align: center; } 
+        .col-profit { flex: 1.5; text-align: right; }
+
+        #live-table-body { display: flex; flex-direction: column; gap: 6px; }
+
+        /* Individual Player Cards */
+        .live-row { 
+            display: flex; justify-content: space-between; align-items: center;
+            background: rgba(17, 18, 29, 0.6); border: 1px solid var(--panel-border); /* Glass effect */
+            padding: 10px 15px; border-radius: 6px; 
+            font-family: 'VT323', monospace; font-size: 20px; color: #fff;
+            animation: fadeIn 0.3s;
+            backdrop-filter: blur(4px);
+        }
+
+        .col-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 1px; }
+
+        .mult-badge {
+            background: var(--green); color: #000; font-family: 'Press Start 2P', monospace;
+            font-size: 9px; padding: 6px 8px; border-radius: 4px; display: inline-block;
+            box-shadow: 0 0 10px rgba(57, 255, 20, 0.4); text-shadow: none;
+        }
+
+        .live-row.cashed { background: rgba(57, 255, 20, 0.05); border-color: rgba(57, 255, 20, 0.3); }
+        .live-row.cashed .col-profit { color: var(--green); text-shadow: 0 0 8px rgba(57, 255, 20, 0.3); }
+        .live-row.crashed { opacity: 0.6; }
+        .live-row.crashed .col-mult { color: var(--red); }
+        .live-row.crashed .col-profit { color: var(--text-dim); }
+
+        /* Countdown Bar */
+        #countdown-wrap {
+            position: absolute; bottom: 25%; left: 15%; width: 70%;
+            display: none; flex-direction: column; align-items: center; gap: 8px; z-index: 5;
+        }
+        #countdown-bg {
+            width: 100%; height: 4px; background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px; overflow: hidden;
+        }
+        #countdown-fill {
+            height: 100%; width: 100%; background: var(--cyan);
+            box-shadow: 0 0 10px var(--cyan); transition: background 0.3s;
+        }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .shake { animation: screenShake 0.4s; }
+        @keyframes screenShake { 0%, 100%{transform: translate(0,0);} 20%{transform: translate(-5px,5px);} 40%{transform: translate(5px,-5px);} 60%{transform: translate(-5px,-5px);} 80%{transform: translate(5px,5px);} }
+
+        #multiplier-display { position: absolute; z-index: 5; font-family: 'Press Start 2P'; font-size: 56px; text-align: center; width: 100%; top: 35%; text-shadow: 4px 4px 0px rgba(0,0,0,0.8); transition: color 0.2s; }
+        #status-display { position: absolute; z-index: 5; top: 25%; font-family: 'Press Start 2P'; font-size: 12px; color: var(--cyan); text-align: center; width: 100%; text-shadow: 2px 2px 0px #000; letter-spacing: 1px; }
+
+        /* --- MODERN GAME HUD --- */
+        #game-hud { 
+            position: absolute; top: 50px; left: 15px; right: 15px; 
+            display: flex; justify-content: space-between; z-index: 10; pointer-events: none; 
+        }
+
+        .hud-badge { 
+            background: rgba(10, 10, 15, 0.4); /* Translucent dark glass */
+            padding: 4px 10px; 
+            border-radius: 12px; 
+            border: none; 
+            display: flex; align-items: center; gap: 8px; 
+            backdrop-filter: blur(4px); /* Blurs the rocket passing behind it */
+            font-family: 'VT323', monospace; font-size: 16px; color: var(--text-main);
+            box-shadow: none;
+        }
+
+        /* Minimalist Provably Fair Button */
+        .pf-btn {
+            position: absolute; bottom: 15px; left: 15px; z-index: 10;
+            width: 32px; height: 32px; padding: 0;
+            background: rgba(10, 10, 15, 0.4); 
+            border: none;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; transition: all 0.2s ease;
+            backdrop-filter: blur(4px);
+            pointer-events: auto;
+            box-shadow: none;
+            color: var(--text-dim);
+            outline: none;
+        }
+        .pf-btn:hover {
+            background: rgba(255, 213, 0, 0.1);
+            border-color: rgba(255, 213, 0, 0.3);
+            color: var(--yellow);
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(255, 213, 0, 0.2);
+        }
+        .pf-btn:active { transform: scale(0.95); }
+
+        /* Minimalist Ping Signal Button */
+        .ping-pill {
+            position: absolute; bottom: 15px; right: 15px; z-index: 10;
+            width: 32px; height: 32px; padding: 0;
+            background: none; 
+            border: none;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(4px);
+            box-shadow: none;
+        }
+        .ping-pill line { transition: stroke 0.3s ease; }
+
+        /* --- ULTRA-COMPACT CONTROLS SECTION --- */
+        #controls { 
+            background: #11121d; 
+            border-top: 1px solid var(--panel-border);
+            padding: 8px 10px; /* Highly compressed padding */
+            z-index: 10; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px; /* Tighter gap */
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+        }
+
+        /* Auto-Bet Mode Tabs */
+        .mode-tabs { display: flex; background: rgba(0,0,0,0.4); border: 1px solid #23253b; border-radius: 4px; padding: 2px; }
+        .mode-tab { flex: 1; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 8px; padding: 6px 0; color: #6c6f93; cursor: pointer; border-radius: 3px; transition: 0.2s; }
+        .mode-tab.active { background: #23253b; color: #fff; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+
+        .input-row { display: flex; gap: 10px; }
+
+        /* Sleek Input Fields */
+        .input-group { 
+            flex: 1; 
+            background: rgba(0,0,0,0.3); 
+            border: none; 
+            border-radius: 4px; 
+            padding: 6px 8px; /* Compressed padding */
+            display: flex; 
+            flex-direction: column; 
+            transition: border-color 0.2s;
+        }
+        .input-group:focus-within { border-color: var(--cyan); }
+
+        .input-group label { font-family: 'Press Start 2P', monospace; font-size: 8px; color: #6c6f93; margin-bottom: 4px; }
+
+        .input-wrap { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; border-bottom: 1px dashed #23253b; padding-bottom: 4px;}
+        .input-wrap span { font-size: 14px; color: var(--text-dim); font-weight: bold; }
+        .input-wrap input { background: transparent; border: none; color: white; font-family: 'VT323', monospace; font-size: 20px; outline: none; width: 100%; }
+
+        /* Compact Quick Actions */
+        .quick-actions { display: flex; gap: 4px; }
+        .quick-btn { flex: 1; background: rgba(255,255,255,0.03); border: 1px solid transparent; color: #a1a3b6; font-family: 'VT323', monospace; font-size: 14px; padding: 2px 0; border-radius: 4px; cursor: pointer; transition: 0.2s; text-align: center; }
+        .quick-btn:hover { background: rgba(255,255,255,0.08); color: #fff; border-color: rgba(255,255,255,0.1); }
+        .quick-btn:active { background: var(--cyan); color: #000; }
+
+        /* Professional Action Button */
+        #action-btn { 
+            width: 100%; 
+            padding: 10px; /* Shorter button */
+            font-family: 'Press Start 2P', monospace; 
+            font-size: 12px; /* Smaller text */
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            transition: all 0.1s ease; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 4px;
+            letter-spacing: 1px;
+        }
+        #action-btn:active { transform: scale(0.98); }
+
+        /* Clean Button States */
+        .btn-bet { background: var(--cyan); color: #000; box-shadow: 0 2px 0 #009926, 0 0 8px rgba(2, 155, 48, 0.74) }
+        .btn-waiting { background: #151726; color: #6c6f93; pointer-events: none; }
+
+        /* UPDATED: Golden BC.GAME Style Cashout Button */
+        .btn-cashout { background: var(--yellow); color: #000; box-shadow: 0 4px 15px rgba(255, 213, 0, 0.4); animation: pulseBtn 1s infinite; }
+
+        .btn-disabled { background: #11121d; color: #444; border: 1px solid #23253b; pointer-events: none; }
+        .btn-autostop { background: var(--red); color: #fff; box-shadow: 0 4px 15px rgba(255, 51, 51, 0.3); }
+        .btn-subtext { font-size: 13px; font-family: 'VT323', monospace; opacity: 0.8; letter-spacing: 1px; }
+
+
+        /* -- TAB: STATS -- */
+        /* --- DASHBOARD & PROFILE STYLES --- */
+        #view-profile, #view-ranks { background: var(--bg-dark); padding: 15px; gap: 15px; overflow-y: auto; }
+
+        .dash-section { 
+            background: rgba(17, 18, 29, 0.6); border: none; 
+            border-radius: 8px; padding: 15px; backdrop-filter: blur(4px); box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .dash-section-title { font-family: 'Press Start 2P', monospace; font-size: 10px; color: #fff; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; }
+
+        /* VIP Header Block */
+        .vip-header { display: flex; align-items: center; gap: 15px; margin-bottom: 5px; }
+        .vip-badge-container { width: 50px; height: 50px; border-radius: 50%; background: #111; display: flex; justify-content: center; align-items: center; border: 2px solid #cd7f32; box-shadow: 0 0 15px rgba(205, 127, 50, 0.2); flex-shrink: 0; transition: all 0.3s ease; }
+        .vip-info { flex: 1; }
+
+        /* 2x2 Stats Grid */
+        .dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .dash-card { background: rgba(0, 0, 0, 0.05); border: 1px solid #1a1c29; border-radius: 6px; padding: 12px; text-align: center; }
+        .dash-card-label { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); margin-bottom: 6px; line-height: 1.4; }
+        .dash-card-val { font-family: 'VT323', monospace; font-size: 22px; color: #fff; }
+        .profit-pos { color: var(--green) !important; text-shadow: 0 0 8px rgba(57, 255, 20, 0.3); } 
+        .profit-neg { color: var(--red) !important; }
+
+        /* Compact Action Rows */
+        .compact-action-row { display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; border: 1px solid #1a1c29; }
+        .action-val { font-family: 'VT323', monospace; font-size: 20px; color: var(--green); }
+        .action-btn { background: var(--green); color: #000; border: none; font-family: 'Press Start 2P', monospace; font-size: 8px; padding: 8px 12px; border-radius: 4px; cursor: pointer; box-shadow: 0 2px 0 #008800; transition: transform 0.1s; }
+        .action-btn:active { transform: translateY(2px); box-shadow: none; }
+
+        /* Logout Button */
+        .btn-logout { width: 100%; padding: 12px; background: transparent; border: 1px solid var(--red); color: var(--red); font-family: 'Press Start 2P', monospace; font-size: 10px; cursor: pointer; border-radius: 6px; transition: 0.2s; }
+        .btn-logout:active { background: var(--red); color: #000; }
+
+        /* --- MODERN BOTTOM NAVIGATION --- */
+        #bottom-nav { 
+            display: flex; 
+            background: linear-gradient(0deg, #050508 0%, #11121d 100%); 
+            border-top: 1px solid var(--panel-border); 
+            padding: 10px 0; 
+            z-index: 20; 
+            padding-bottom: max(10px, env(safe-area-inset-bottom)); /* iOS Safe Area */
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.5);
+        }
+
+        .nav-btn { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center;
+            gap: 6px;
+            font-family: 'Press Start 2P', monospace; 
+            font-size: 8px; 
+            color: #5a5d7a; /* Muted sleek gray */
+            cursor: pointer; 
+            transition: all 0.2s ease; 
+        }
+
+        .nav-btn svg {
+            transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy hover effect */
+        }
+
+        /* Hover State */
+        .nav-btn:hover { color: #8a8daa; }
+        .nav-btn:hover svg { transform: translateY(-2px); stroke: #8a8daa; }
+
+        /* Active State */
+        .nav-btn.active { color: var(--cyan); text-shadow: 0 0 8px rgba(0, 243, 255, 0.4); }
+        .nav-btn.active svg { 
+            stroke: var(--cyan); 
+            filter: drop-shadow(0 0 6px rgba(0, 243, 255, 0.6));
+            transform: translateY(-4px) scale(1.1); 
+        }
+
+        /* Toast */
+        #toast-container { position: absolute; top: 70px; right: 10px; display: flex; flex-direction: column; gap: 10px; z-index: 99999; pointer-events: none; }
+        .toast { background: rgba(0,0,0,0.9); border-left: 4px solid var(--cyan); padding: 10px 15px; font-size: 20px; animation: slideIn 0.3s ease-out; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        @media (min-width: 768px) { body { max-width: 450px; margin: 0 auto; border: 2px solid var(--panel-border); } }
+        /* --- REDESIGNED CHAT TAB --- */
+        #view-chat { background: rgba(17, 17, 17, 0.3); display: none; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
+        #view-chat.active { display: flex; }
+
+        #chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
+
+        /* Empty State */
+        .chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; opacity: 0.5; color: var(--text-dim); gap: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px; text-align: center; line-height: 1.5; }
+        .chat-empty svg { stroke: var(--text-dim); width: 48px; height: 48px; margin-bottom: 10px; opacity: 0.8; }
+
+        /* Message Bubbles */
+        .chat-row { 
+            background: rgba(17, 18, 29, 0.8); border: none; 
+            padding: 10px 12px; border-radius: 8px; border-bottom-left-radius: 2px;
+            display: flex; flex-direction: column; gap: 6px;
+            animation: slideUp 0.3s ease-out; backdrop-filter: blur(4px);
+            box-shadow: none;
+        }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .chat-header-row { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed rgba(255,255,255,0.05); padding-bottom: 6px; }
+        .chat-user-info { display: flex; align-items: center; gap: 6px; }
+        .chat-name { font-family: 'Press Start 2P', monospace; font-size: 8px; letter-spacing: 0.5px; }
+        .chat-time { color: #555; font-size: 14px; font-family: 'VT323', monospace; }
+        .chat-text { color: var(--text-main); font-size: 18px; word-break: break-word; line-height: 1.3; font-family: 'VT323', monospace; }
+
+        /* Chat Input Area */
+        #chat-input-area { 
+            background: #11121d; padding: 12px 15px; border-top: 1px solid var(--panel-border); 
+            display: flex; gap: 10px; align-items: center; box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+        }
+        #chat-input-wrapper {
+            flex: 1; background: rgba(0,0,0,0.3); border: none; border-radius: 6px;
+            display: flex; align-items: center; padding: 0 10px; transition: 0.2s;
+        }
+        #chat-input { 
+            flex: 1; background: transparent; border: none; color: white; 
+            font-family: 'VT323', monospace; font-size: 20px; padding: 10px 0; outline: none; 
+        }
+        #chat-send-btn { 
+            background: var(--cyan); border: none; width: 37px; height: 37px; border-radius: 6px; 
+            cursor: pointer; display: flex; justify-content: center; align-items: center; 
+            color: #000; transition: all 0.1s; box-shadow: none;
+        }
+        #chat-send-btn:active { transform: scale(0.95); box-shadow: none; }
+
+        /* Flex constraint for max payout toast */
+        .toast { display: flex; align-items: center; gap: 8px; }
+        /* Auto-Bet Mode Tabs */
+        .mode-tabs { display: flex; background: #151726; border: none; border-radius: 4px; margin-bottom: 8px; }
+        .mode-tab { flex: 1; text-align: center; font-family: 'Press Start 2P'; font-size: 8px; padding: 10px 0; color: var(--text-dim); cursor: pointer; transition: 0.2s; }
+        .mode-tab.active { background: #1a1a24; color: var(--cyan); border-bottom: 2px solid var(--cyan); text-shadow: none; }
+
+        /* Auto-Stop Button State */
+        .btn-autostop { background: linear-gradient(180deg, #ff3333, #cc0000); color: #fff; text-shadow: 1px 1px 0px rgba(0,0,0,0.6); box-shadow: 0 4px 0px #880000; animation: pulseBtn 1.5s infinite; }
+        /* Auth Overlay */
+        /* --- DYNAMIC LIVE BETS TAB --- */
+        #view-live { background: var(--bg-dark); overflow-y: auto; padding: 15px; gap: 8px; }
+        .table-header { 
+            display: flex; justify-content: space-between; align-items: center;
+            background: #11121d; padding: 12px 15px; border-radius: 6px;
+            font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); 
+            margin-bottom: 4px;
+        }
+
+        /* Column Width Formatting */
+        .col-user { flex: 2; display: flex; align-items: center; gap: 6px; overflow: hidden; } 
+        .col-bet { flex: 1; text-align: right; } 
+        .col-mult { flex: 1; text-align: center; } 
+        .col-profit { flex: 1.5; text-align: right; }
+
+        #live-table-body { display: flex; flex-direction: column; gap: 6px; }
+
+        /* Individual Player Cards */
+        .live-row { 
+            display: flex; justify-content: space-between; align-items: center;
+            background: #11121d; border: 1px solid var(--panel-border);
+            padding: 10px 15px; border-radius: 6px; 
+            font-family: 'VT323', monospace; font-size: 20px; color: #fff;
+            animation: fadeIn 0.3s;
+        }
+
+        .col-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 1px; }
+
+        /* Winner Multiplier Pill */
+        .mult-badge {
+            background: var(--green); color: #000; font-family: 'Press Start 2P', monospace;
+            font-size: 9px; padding: 6px 8px; border-radius: 4px; display: inline-block;
+            box-shadow: 0 0 10px rgba(57, 255, 20, 0.4); text-shadow: none;
+        }
+
+        /* Winning Row Glow */
+        .live-row.cashed { background: rgba(57, 255, 20, 0.05); border-color: rgba(57, 255, 20, 0.3); }
+        .live-row.cashed .col-profit { color: var(--green); text-shadow: 0 0 8px rgba(57, 255, 20, 0.3); }
+
+        /* Losing Row Dimming */
+        .live-row.crashed { opacity: 0.6; }
+        .live-row.crashed .col-mult { color: var(--red); }
+        .live-row.crashed .col-profit { color: var(--text-dim); }
+    </style>
+</head>
+<body>
+
+    <div id="audio-overlay" onclick="initAudioAndStart()">
+        <div class="pulse-text">TAP TO START<br><br><span style="font-size:10px; color:#888;">ENABLES 8-BIT AUDIO</span></div>
+    </div>
+
+    <div id="header">
+        <!-- Left: Balance -->
+        <div class="bal-wrap">
+            <div class="bal-label-row">
+                BALANCE (USD)
+                <button id="refresh-btn" class="arcade-refresh-btn" onclick="checkDeposits()">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square">
+                        <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="bal-val-row">
+                <span id="balance-display">$0.00</span> 
+                <span id="balance-sol">(TRC20)</span>
+            </div>
+        </div>
+
+        <!-- Right: Actions -->
+        <div class="header-actions">
+            <div class="action-row">
+                <!-- Sleek Wallet Pill -->
+                <div class="deposit-pill" onclick="copyAddress(event)" id="deposit-address" data-full="">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    WALLET
+                </div>
+
+                <!-- Audio Toggle -->
+                <button id="mute-btn" onclick="toggleAudio()" style="background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 0; outline: none; transition: color 0.2s; display: flex; align-items: center;">
+                    <svg id="icon-sound-on" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                    </svg>
+                    <svg id="icon-sound-off" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" style="display: none; color: var(--red);">
+                        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                        <line x1="23" y1="9" x2="17" y2="15"></line>
+                        <line x1="17" y1="9" x2="23" y2="15"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="main-view">
+        <!-- GAME TAB -->
+        <div id="view-game" class="view-tab active">
+            <!-- NEW: Wrap the Canvas and Controls together to fill the screen -->
+            <div class="game-main-screen">
+
+                <div id="game-container">
+                    <!-- Floating History Overlay -->
+                    <div id="history-overlay">
+                        <div id="history-bar"></div>
+                        <button class="history-btn" onclick="openHistoryModal(event)">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                        </button>
+                    </div>
+    
+                    <!-- Sleek Live Canvas HUD (Online Only, Pushed to Right) -->
+                    <div id="game-hud" style="justify-content: flex-end;">
+                        <div class="hud-badge" style="color: var(--cyan);">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            <span id="online-count">1</span>
+                        </div>
+                    </div>
+
+                    <!-- Minimalist Provably Fair Button (Bottom Left) -->
+                    <button id="pf-btn" class="pf-btn" onclick="copyFairData()" title="Provably Fair">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    </button>
+
+                    <!-- NEW: Minimalist Ping Signal Bars (Bottom Right) -->
+                    <div class="ping-pill" title="Network Ping">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line id="sig-1" x1="4" y1="20" x2="4" y2="16" stroke="var(--green)"></line>
+                            <line id="sig-2" x1="9" y1="20" x2="9" y2="12" stroke="var(--green)"></line>
+                            <line id="sig-3" x1="14" y1="20" x2="14" y2="8" stroke="var(--green)"></line>
+                            <line id="sig-4" x1="19" y1="20" x2="19" y2="3" stroke="var(--green)"></line>
+                        </svg>
+                    </div>
+    
+                    <canvas id="game-canvas"></canvas>
+    
+                    <!-- Countdown Progress Bar -->
+                    <div id="countdown-wrap">
+                        <div id="countdown-bg">
+                            <div id="countdown-fill"></div>
+                        </div>
+                    </div>
+    
+                    <div id="status-display">PREPARING LAUNCH...</div>
+                    <div id="multiplier-display">1.00x</div>
+                </div> <!-- END GAME CONTAINER -->
+    
+                <!-- Controls Area -->
+                <div id="controls">
+    
+                    <!-- MANUAL / AUTO Switch -->
+                    <div class="mode-tabs">
+                        <div class="mode-tab active" id="tab-manual" onclick="setBetMode('manual')">MANUAL</div>
+                        <div class="mode-tab" id="tab-auto" onclick="setBetMode('auto')">AUTO</div>
+                    </div>
+    
+                    <div class="input-row">
+                        <!-- Bet Amount Group -->
+                        <div class="input-group">
+                            <label>BET AMOUNT</label>
+                            <div class="input-wrap">
+                                <span style="color: var(--cyan);">$</span>
+                                <input type="number" id="bet-input" value="10.00" step="1.00">
+                            </div>
+                            <div class="quick-actions">
+                                <div class="quick-btn" onclick="modifyBet('half')">1/2</div>
+                                <div class="quick-btn" onclick="modifyBet('double')">2x</div>
+                                <div class="quick-btn" onclick="modifyBet('max')">MAX</div>
+                            </div>
+                        </div>
+    
+                        <!-- Auto Cashout Group -->
+                        <div class="input-group">
+                            <label>AUTO CASHOUT</label>
+                            <div class="input-wrap">
+                                <input type="number" id="auto-input" value="2.00" step="0.10">
+                                <span style="color: var(--cyan);">x</span>
+                            </div>
+                            <div class="quick-actions">
+                                <div class="quick-btn" onclick="document.getElementById('auto-input').value='1.50'">1.5x</div>
+                                <div class="quick-btn" onclick="document.getElementById('auto-input').value='2.00'">2.0x</div>
+                                <div class="quick-btn" onclick="document.getElementById('auto-input').value='10.0'">10x</div>
+                            </div>
+                        </div>
+                    </div>
+    
+                    <!-- Main Action Button -->
+                    <button id="action-btn" class="btn-bet" onclick="handleAction()">
+                        <span id="btn-main-text" style="pointer-events: none;">PLACE BET</span>
+                        <span id="btn-subtext" class="btn-subtext" style="pointer-events: none;">Next Round</span>
+                    </button>
+    
+                </div> <!-- END CONTROLS -->
+
+            </div>
+            <!-- INTEGRATED LIVE BETS & POT STATS -->
+            <div id="game-live-bets">
+                <div class="round-stats-bar">
+                    <div>
+                        <div class="rs-label">PLAYERS</div>
+                        <div class="rs-val" id="pot-players">0</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="rs-label">TOTAL POT</div>
+                        <div class="rs-val rs-pot" id="pot-total">$0.00</div>
+                    </div>
+                </div>
+
+                <div class="table-header">
+                    <div class="col-user">PLAYER</div>
+                    <div class="col-bet">BET($)</div>
+                    <div class="col-mult">MULT</div>
+                    <div class="col-profit">PROFIT($)</div>
+                </div>
+                <div id="live-table-body"></div>
+            </div> <!-- END LIVE BETS -->
+
+        </div> <!-- END VIEW-GAME TAB -->
+
+        <!-- PROFILE TAB (Personal) -->
+        <div id="view-profile" class="view-tab">
+
+            <!-- VIP & Profile Header -->
+            <div class="dash-section" style="border-top: 2px solid var(--cyan); background: linear-gradient(180deg, rgba(17,18,29,0.9) 0%, rgba(0,0,0,0.4) 100%);">
+                <div class="vip-header">
+                    <div id="vip-big-icon" class="vip-badge-container"></div>
+                    <div class="vip-info">
+                        <div id="stat-username" style="font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; margin-bottom: 10px;">PLAYER</div>
+                        <div style="display: flex; justify-content: space-between; font-size: 8px; font-family: 'Press Start 2P', monospace; margin-bottom: 6px;">
+                            <span id="vip-rank-name" style="color: #cd7f32;">BRONZE</span>
+                            <span id="vip-next-name" style="color: #888;">NEXT: SILVER</span>
+                        </div>
+                        <div style="width: 100%; height: 6px; background: #000; border-radius: 3px; overflow: hidden; border: 1px solid #333;">
+                            <div id="vip-progress-fill" style="height: 100%; width: 0%; background: #cd7f32; box-shadow: 0 0 8px #cd7f32;"></div>
+                        </div>
+                        <div id="vip-progress-text" style="font-size: 12px; color: var(--text-dim); margin-top: 6px; text-align: right; font-family: 'VT323', monospace;">0.00 / 10.00 SOL</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Personal Stats Grid -->
+            <div class="dashboard-grid">
+                <div class="dash-card">
+                    <div class="dash-card-label">WAGERED</div>
+                    <div class="dash-card-val" id="stat-wagered">$0.00</div>
+                    <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;" id="stat-wagered-sol">(0.0000 SOL)</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-label">TOTAL WON</div>
+                    <div class="dash-card-val" id="stat-profit">$0.00</div>
+                    <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;" id="stat-profit-sol">(0.00 USDT)</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-label">ROUNDS</div>
+                    <div class="dash-card-val" id="stat-rounds" style="margin-top: 8px;">0</div>
+                </div>
+                <div class="dash-card">
+                    <div class="dash-card-label">REFERRED</div>
+                    <div class="dash-card-val" id="stat-referred-count" style="margin-top: 8px;">0</div>
+                </div>
+            </div>
+
+            <!-- Vault & Affiliates (Kept exactly as it is) -->
+            <div class="dash-section">
+                <div class="dash-section-title">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    REWARDS VAULT
+                </div>
+
+                <div class="compact-action-row" style="margin-bottom: 10px;">
+                    <div>
+                        <div style="font-size: 10px; color: var(--text-dim);">RAKEBACK</div>
+                        <div class="action-val" id="vip-rakeback-val">+$0.00</div>
+                    </div>
+                    <button class="action-btn" onclick="claimRakeback()">CLAIM</button>
+                </div>
+
+                <div class="compact-action-row">
+                    <div>
+                        <div style="font-size: 10px; color: var(--text-dim);">AFFILIATE</div>
+                        <div class="action-val" id="stat-affiliate-unpaid">+$0.00</div>
+                    </div>
+                    <button class="action-btn" onclick="claimAffiliate()">CLAIM</button>
+                </div>
+
+                <div style="margin-top: 15px;">
+                    <div style="font-size: 10px; color: var(--text-dim); margin-bottom: 6px;">YOUR REFERRAL LINK:</div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="ref-link-display" readonly style="flex: 1; padding: 10px; background: rgba(172, 172, 172, 0.05); border: none; color: #fff; font-family: 'VT323'; font-size: 14px; outline: none; border-radius: 4px;">
+                        <button onclick="copyRefLink()" style="background: rgba(0,243,255,0.1); color: var(--cyan); border: 1px solid var(--cyan); font-family: 'VT323'; font-size: 14px; cursor: pointer; padding: 0 12px; border-radius: 4px;">COPY</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Withdraw Panel -->
+            <div class="dash-section" style="border-color: var(--cyan);">
+                <div class="dash-section-title" style="color: #fff;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                    WITHDRAW FUNDS
+                </div>
+
+                <!-- NEW: High-Visibility Limits Box -->
+                <div style="background: rgba(172, 172, 172, 0.05); border: none; padding: 10px 15px; border-radius: 6px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div style="text-align: left;">
+                        <div style="font-size: 8px; color: var(--cyan); font-family: 'Press Start 2P', monospace; margin-bottom: 6px;">MINIMUM</div>
+                        <div style="font-family: 'VT323', monospace; font-size: 20px; color: #fff;">
+                            $22.00 <span id="withdraw-min-sol" style="font-size: 14px; color: var(--text-dim);">(~0.0000 SOL)</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 8px; color: var(--cyan); font-family: 'Press Start 2P', monospace; margin-bottom: 6px;">MAXIMUM</div>
+                        <div style="font-family: 'VT323', monospace; font-size: 20px; color: #fff;">
+                            $1,000.00 <span id="withdraw-max-sol" style="font-size: 14px; color: var(--text-dim);">(~0.00 SOL)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <input type="text" id="withdraw-address" placeholder="Destination USDT Address" style="width: 100%; padding: 10px; margin-bottom: 8px; background: transparent; border: 1px solid #23253b; color: white; font-family: 'VT323'; font-size: 16px; outline: none; border-radius: 4px;">
+
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <input type="number" id="withdraw-amount" placeholder="Amount (USDT)" step="0.01" style="flex: 1; padding: 10px; background: transparent; border: 1px solid #23253b; color: white; font-family: 'VT323'; font-size: 16px; outline: none; border-radius: 4px;">
+                    <button onclick="document.getElementById('withdraw-amount').value = myBalance.toFixed(4)" style="background: #1a1a24; border: 1px solid #333; color: white; font-family: 'VT323'; font-size: 14px; cursor: pointer; padding: 0 12px; border-radius: 4px;">MAX</button>
+                </div>
+
+                <button onclick="requestWithdraw()" style="width: 100%; padding: 12px; background: var(--cyan); color: #000; border: none; font-family: 'Press Start 2P'; font-size: 10px; cursor: pointer; border-radius: 4px; box-shadow: 0 3px 0 #051; transition: 0.1s;">
+                    CONFIRM WITHDRAWAL
+                </button>
+
+                <!-- NEW: Disclaimer Note -->
+                <div style="font-size: 10px; color: var(--text-dim); margin-top: 12px; text-align: center; line-height: 1.4;">
+                    <span style="color: var(--yellow);">Note:</span> Withdrawals under $22.00 USD will be automatically rejected to cover Solana priority network fees.
+                </div>
+            </div>
+
+            <!-- Account Security Panel -->
+            <div class="dash-section" style="border-color: var(--magenta);">
+                <div class="dash-section-title" style="color: #fff;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    ACCOUNT SECURITY
+                </div>
+
+                <input type="password" id="cp-current" placeholder="Current Password" style="width: 100%; padding: 10px; margin-bottom: 8px; background: rgba(0,0,0,0.3); border: 1px solid #23253b; color: white; font-family: 'VT323'; font-size: 16px; outline: none; border-radius: 4px;">
+
+                <input type="password" id="cp-new" placeholder="New Password (5+ chars)" style="width: 100%; padding: 10px; margin-bottom: 8px; background: rgba(0,0,0,0.3); border: 1px solid #23253b; color: white; font-family: 'VT323'; font-size: 16px; outline: none; border-radius: 4px;">
+
+                <input type="password" id="cp-confirm" placeholder="Confirm New Password" style="width: 100%; padding: 10px; margin-bottom: 12px; background: rgba(0,0,0,0.3); border: 1px solid #23253b; color: white; font-family: 'VT323'; font-size: 16px; outline: none; border-radius: 4px;">
+
+                <button onclick="submitPasswordChange()" style="width: 100%; padding: 12px; background: var(--cyan); color: #000; border: none; font-family: 'Press Start 2P'; font-size: 10px; cursor: pointer; border-radius: 4px; box-shadow: 0 3px 0 #051; transition: 0.1s;">
+                    UPDATE PASSWORD
+                </button>
+            </div>
+
+            <button class="btn-logout" onclick="logout()">LOGOUT ACCOUNT</button>
+        </div>
+
+        <!-- RANKS TAB (Leaderboard & Tech) -->
+        <div id="view-ranks" class="view-tab">
+            <div class="dash-section" style="border-color: #fff;">
+                <div class="dash-section-title" style="color: #fff; justify-content: center;">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10c3 0 5 2 5 5s-2 5-5 5H7c-3 0-5-2-5-5s2-5 5-5z"/></svg>
+                    HIGH ROLLERS
+                </div>
+                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 8px; font-family: 'Press Start 2P'; font-size: 8px; color: var(--text-dim);">
+                    <div style="flex: 0.5;">#</div><div style="flex: 2;">PLAYER</div><div style="flex: 1.5; text-align: right;">PROFIT</div>
+                </div>
+                <div id="leaderboard-body" style="display: flex; flex-direction: column; gap: 4px;">
+                    <div style="font-size: 14px; color: var(--text-dim); text-align: center; padding: 10px 0;">LOADING DATA...</div>
+                </div>
+            </div>
+
+            <div class="dash-section" style="border-color: var(--yellow);">
+                <div class="dash-section-title" style="color: var(--yellow);">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                    PROVABLY FAIR
+                </div>
+                <div style="font-size: 12px; color: var(--text-dim); margin-bottom: 10px;">Independently verify the math of any past round using its Seed.</div>
+                <input type="text" id="verify-seed" placeholder="Paste Server Seed..." style="width: 100%; padding: 10px; margin-bottom: 10px; background: #151726; border: none; color: white; font-family: 'VT323'; font-size: 14px; outline: none; border-radius: 4px;">
+                <button onclick="verifySeed()" style="width: 100%; padding: 10px; background: var(--yellow); color: #000; border: none; font-family: 'Press Start 2P'; font-size: 8px; cursor: pointer; border-radius: 4px; box-shadow: 0 3px 0 #b39500;">VERIFY ROUND</button>
+                <div id="verify-result" style="font-size: 14px; margin-top: 10px; color: var(--cyan); display: none; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 4px; border: 1px dashed var(--yellow);">
+                    <div style="color: var(--text-dim); font-size: 10px;">SHA-256 HASH:</div>
+                    <div id="vr-hash" style="color: white; word-break: break-all; margin-bottom: 10px;"></div>
+                    <div style="color: var(--text-dim); font-size: 10px;">CALCULATED CRASH:</div>
+                    <div id="vr-crash" style="color: var(--green); font-size: 24px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHAT TAB -->
+        <div id="view-chat" class="view-tab">
+            <div id="chat-messages">
+                <!-- Beautiful Empty State Placeholder -->
+                <div class="chat-empty" id="chat-empty-state">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <div>GLOBAL CHAT<br><br><span style="font-size: 8px; color: #555;">Be the first to drop a message!</span></div>
+                </div>
+            </div>
+
+            <div id="chat-input-area">
+                <div id="chat-input-wrapper">
+                    <input type="text" id="chat-input" placeholder="Type message..." maxlength="80" autocomplete="off" onkeypress="if(event.key === 'Enter') sendChat()">
+                </div>
+                <button id="chat-send-btn" onclick="sendChat()" title="Send">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sleek History Popover -->
+    <div id="history-popover">
+        <div class="hp-header">PAST ROUNDS</div>
+        <div class="hp-list" id="hm-list"></div>
+    </div>
+
+    <!-- MODERN BOTTOM NAV -->
+    <div id="bottom-nav">
+        <div class="nav-btn active" onclick="switchTab('game')">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path></svg>
+            GAME
+        </div>
+        <div class="nav-btn" onclick="switchTab('chat')">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            CHAT
+        </div>
+        <!-- NEW: RANKS TAB -->
+        <!-- RANKS TAB -->
+        <div class="nav-btn" onclick="switchTab('ranks')">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M8 21h8"/>
+                <path d="M12 17v4"/>
+                <path d="M7 4h10c3 0 5 2 5 5s-2 5-5 5H7c-3 0-5-2-5-5s2-5 5-5z"/>
+            </svg>
+            RANKS
+        </div>
+        <div class="nav-btn" onclick="switchTab('profile')">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            PROFILE
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <!-- Sleek QR Popover -->
+    <!-- Sleek QR Popover -->
+    <div id="qr-popover">
+        <!-- Fixed size wrapper so it doesn't collapse during load -->
+        <div style="background: #fff; padding: 6px; border-radius: 6px; margin-bottom: 10px; box-shadow: inset 0 0 4px rgba(0,0,0,0.5); width: 142px; height: 142px; display: flex; justify-content: center; align-items: center; position: relative;">
+
+            <!-- Loading Spinner -->
+            <div id="qr-spinner" class="qr-spinner"></div>
+
+            <!-- Hidden QR Image -->
+            <img id="qr-image" src="" width="130" height="130" alt="QR Code" style="display: none;">
+        </div>
+
+        <div class="qr-title">TRC20 NETWORK</div>
+        <div class="qr-desc">MIN DEPOSIT: <span style="color: var(--yellow)">$1.00</span></div>
+    </div>
+
+    <script>
+        // --- Session Management ---
+        let sessionToken = localStorage.getItem('arcade_token');
+
+        // If they don't have a token, instantly redirect them to the secure Auth page
+        if (!sessionToken) {
+            window.location.href = '/auth';
+        }
+
+        // Connect to server WITH token
+        const socket = io({ auth: { token: sessionToken } });
+
+        window.logout = () => {
+            playSfx('click');
+            localStorage.removeItem('arcade_token');
+            window.location.href = '/auth'; // Redirect to auth page on logout
+        };
+
+        // If the server explicitly rejects their token, kick them to the login page
+        socket.on('force_logout', () => {
+            localStorage.removeItem('arcade_token');
+            window.location.href = '/auth';
+        });
+
+        // (You can DELETE the old `window.doAuth`, `socket.on('auth_success')`, and `socket.on('auth_error')` from index.html entirely!)
+        // Capture ?ref=USERNAME from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlRef = urlParams.get('ref');
+        if (urlRef) {
+            document.getElementById('auth-ref').value = urlRef.toUpperCase();
+        }
+
+        window.claimRakeback = () => {
+            playSfx('click');
+            socket.emit('claim_rakeback'); // Send to backend to securely process
+        };
+
+        window.copyRefLink = () => {
+            playSfx('click');
+            const link = document.getElementById('ref-link-display').value;
+            navigator.clipboard.writeText(link);
+
+            const linkSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" style="vertical-align: middle;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+            showToast(`${linkSvg} LINK COPIED!`);
+        };
+
+        window.claimAffiliate = () => {
+            playSfx('click');
+            socket.emit('claim_affiliate');
+        };
+
+        // --- LIVE STATS SYNCHRONIZER ---
+        // Instantly refreshes the screen when background money arrives
+        socket.on('stats_update', (stats) => {
+            if (stats) updateStats(stats);
+        });
+
+        socket.on('affiliate_success', (amountSol) => {
+            playSfx('cashout');
+            const amountUsd = amountSol * currentSolPrice;
+            const cashSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="square" style="vertical-align: middle;"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>`;
+            showToast(`${cashSvg} PAID $${amountUsd.toFixed(2)} COMMISSION!`);
+        });
+
+        // Listen for success from the server
+        socket.on('rakeback_success', (amountSol) => {
+            playSfx('cashout');
+            const amountUsd = amountSol * currentSolPrice;
+
+            // Clean SVG Trophy Icon
+            const trophySvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="square" style="vertical-align: middle;"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10c3 0 5 2 5 5s-2 5-5 5H7c-3 0-5-2-5-5s2-5 5-5z"/></svg>`;
+
+            showToast(`${trophySvg} CLAIMED $${amountUsd.toFixed(2)} VAULT!`);
+        });
+
+        socket.on('auth_success', (token) => {
+            localStorage.setItem('arcade_token', token);
+            window.location.reload(); // Reload to inject the token into the socket
+        });
+
+        socket.on('auth_error', (msg) => {
+            document.getElementById('auth-msg').innerText = msg;
+            document.getElementById('auth-msg').style.color = 'var(--red)';
+        });
+
+        socket.on('force_logout', () => {
+            localStorage.removeItem('arcade_token');
+            window.location.reload();
+        });
+
+        function checkDeposits() {
+            playSfx('click');
+            const btn = document.getElementById('refresh-btn');
+            if (btn) btn.classList.add('refreshing-active');
+            socket.emit('check_deposits');
+        }
+
+        socket.on('deposit_result', (msg) => {
+            const btn = document.getElementById('refresh-btn');
+            if (btn) btn.classList.remove('refreshing-active');
+            showToast(msg);
+        });
+
+        let currentSolPrice = 1; // FIX: Changed to 1 for 1:1 USDT parity
+
+        // --- DOM Elements ---
+        const ui = {
+            bal: document.getElementById('balance-display'),
+            mult: document.getElementById('multiplier-display'),
+            stat: document.getElementById('status-display'),
+            btn: document.getElementById('action-btn'),
+            btnMain: document.getElementById('btn-main-text'),
+            btnSub: document.getElementById('btn-subtext'),
+            inpBet: document.getElementById('bet-input'),
+            inpAuto: document.getElementById('auto-input'),
+            // Change this line:
+            hist: document.getElementById('history-bar'), // <-- Updated!
+            canvas: document.getElementById('game-canvas'),
+            liveBody: document.getElementById('live-table-body'),
+            stUser: document.getElementById('stat-username'),
+            stWag: document.getElementById('stat-wagered'),
+            stProf: document.getElementById('stat-profit'),
+            stRnd: document.getElementById('stat-rounds')
+        };
+        const ctx = ui.canvas.getContext('2d');
+
+        // --- Game State ---
+        const GROWTH_RATE = 0.00006;
+        let betMode = 'manual';
+        let autoBetEnabled = false;
+        let localHistory = []; // Stores the rich history array
+        // --- Multiplier Color Tiers ---
+        function getMultTierClass(mult) {
+            if (mult < 2.00) return 'hist-t1'; // Gray
+            if (mult < 10.00) return 'hist-t2'; // Green
+            if (mult < 50.00) return 'hist-t3'; // Gold
+            return 'hist-t4'; // Magenta
+        }
+
+        window.copyText = (text, type) => {
+            playSfx('click');
+            navigator.clipboard.writeText(text);
+            const icon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" style="vertical-align: middle;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+            showToast(`${icon} ${type} COPIED`);
+        };
+
+        // --- Anti-Throttling Auto-Bet Timer (Web Worker) ---
+        // Browsers throttle setTimeout in background tabs. A Web Worker bypasses this entirely.
+        const timerWorkerCode = `
+            self.onmessage = function(e) {
+                if (e.data.command === 'start') {
+                    setTimeout(() => self.postMessage('tick'), e.data.delay);
+                }
+            };
+        `;
+        const timerBlob = new Blob([timerWorkerCode], { type: 'application/javascript' });
+        const timerWorker = new Worker(URL.createObjectURL(timerBlob));
+
+        // When the worker finishes its un-throttled countdown, place the bet
+        timerWorker.onmessage = function() {
+            if (autoBetEnabled && state === 'WAITING' && !myBet) {
+                attemptBet();
+            }
+        };
+
+        window.setBetMode = (mode) => {
+            playSfx('click');
+            betMode = mode;
+            autoBetEnabled = false; // Always pause auto-bet if they switch tabs
+
+            document.getElementById('tab-manual').classList.toggle('active', mode === 'manual');
+            document.getElementById('tab-auto').classList.toggle('active', mode === 'auto');
+
+            // Refresh button text instantly
+            if (state === 'WAITING' && !myBet) setBtn('BET');
+        };
+
+        // Decoupled betting function
+        function attemptBet() {
+            let a = parseFloat(ui.inpBet.value), o = parseFloat(ui.inpAuto.value);
+            let maxUsdBalance = myBalance; // Balance is exactly USD now
+
+            if(a > maxUsdBalance) {
+                autoBetEnabled = false; // Stop the loop if broke
+                if(state === 'WAITING' && !myBet) setBtn('BET');
+                return showToast('POOR');
+            }
+
+            socket.emit('place_bet', { amount: a, autoCashout: o });
+        }
+        let state = 'WAITING';
+        let startTime = 0;
+        let currentMult = 1.00;
+        let myBet = null;
+        let myPlayer = null;
+        let myBalance = 0;
+        let roundBets = {}; // Tracks live players
+        let currentHash = ''; // <-- ADD THIS LINE!
+        let currentSeed = '';
+
+        // --- Audio Synthesizer (Web Audio API) ---
+        let actx = null;
+        let audioEnabled = false;
+
+        window.toggleAudio = () => {
+            audioEnabled = !audioEnabled;
+            document.getElementById('icon-sound-on').style.display = audioEnabled ? 'block' : 'none';
+            document.getElementById('icon-sound-off').style.display = audioEnabled ? 'none' : 'block';
+            document.getElementById('mute-btn').style.color = audioEnabled ? 'var(--text-dim)' : 'var(--red)';
+            if(audioEnabled) playSfx('click');
+        };
+
+        window.copyFairData = () => {
+            playSfx('click');
+            const shieldSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="square" style="vertical-align: middle;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`;
+
+            // If crashed, copy the revealed Seed. If playing/waiting, copy the Hash.
+            if (state === 'CRASHED' && currentSeed) {
+                navigator.clipboard.writeText(currentSeed);
+                showToast(`${shieldSvg} SEED COPIED!`);
+            } else if (currentHash) {
+                navigator.clipboard.writeText(currentHash);
+                showToast(`${shieldSvg} HASH COPIED!`);
+            }
+        };
+
+        function initAudioAndStart() {
+            document.getElementById('audio-overlay').style.display = 'none';
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            actx = new AudioContext();
+            audioEnabled = true;
+            playSfx('click');
+        }
+
+        function playTone(freq, type, duration, vol=0.1) {
+            if(!audioEnabled || !actx) return;
+            const osc = actx.createOscillator();
+            const gain = actx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, actx.currentTime);
+            gain.gain.setValueAtTime(vol, actx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(actx.destination);
+            osc.start();
+            osc.stop(actx.currentTime + duration);
+        }
+
+        function playNoise(duration, vol=0.2) {
+            if(!audioEnabled || !actx) return;
+            const bufferSize = actx.sampleRate * duration;
+            const buffer = actx.createBuffer(1, bufferSize, actx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = actx.createBufferSource();
+            noise.buffer = buffer;
+            const filter = actx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 400; // Deep explosion
+            const gain = actx.createGain();
+            gain.gain.setValueAtTime(vol, actx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, actx.currentTime + duration);
+            noise.connect(filter); filter.connect(gain); gain.connect(actx.destination);
+            noise.start();
+        }
+
+        function playSfx(type) {
+            if(!audioEnabled) return;
+            if(type === 'click') playTone(600, 'square', 0.1, 0.05);
+            if(type === 'launch') { playTone(200, 'sawtooth', 0.5, 0.1); setTimeout(()=>playTone(300, 'sawtooth', 0.5, 0.1), 100); }
+            if(type === 'cashout') { playTone(523.25, 'square', 0.1); setTimeout(()=>playTone(659.25, 'square', 0.2), 100); setTimeout(()=>playTone(783.99, 'square', 0.3), 200); }
+            if(type === 'crash') { playNoise(1.5, 0.5); ui.canvas.parentElement.classList.add('shake'); setTimeout(()=>ui.canvas.parentElement.classList.remove('shake'), 400); }
+        }
+
+        // --- VIP Ranking System (USDT Scale) ---
+        function getVipInfo(wageredUsd) {
+            const w = wageredUsd || 0;
+            let name, color, next;
+
+            // NEW CASINO THRESHOLDS:
+            // Bronze: $0
+            // Silver: $500 wagered
+            // Gold: $2,500 wagered
+            // Diamond: $10,000 wagered
+            // Elite: $50,000 wagered
+
+            if (w >= 50000) { name = 'ELITE'; color = '#ff00ea'; next = null; }
+            else if (w >= 10000) { name = 'DIAMOND'; color = '#00f3ff'; next = 50000; }
+            else if (w >= 2500) { name = 'GOLD'; color = '#ffd500'; next = 10000; }
+            else if (w >= 500) { name = 'SILVER'; color = '#c0c0c0'; next = 2500; }
+            else { name = 'BRONZE'; color = '#cd7f32'; next = 500; }
+
+            // Sleek Arcade Diamond SVG badge
+            const badge = `<svg width="10" height="10" viewBox="0 0 24 24" fill="${color}" style="margin-right: 4px; vertical-align: middle; filter: drop-shadow(0 0 4px ${color});">
+                <polygon points="12 2 22 12 12 22 2 12"></polygon>
+            </svg>`;
+
+            return { name, color, badge, next, current: w };
+        }
+
+        // --- Graphics Engine ---
+        let cw, ch;
+        let stars = [], particles = [], explosion = [], celestials = [];
+        let earthY = 0;
+        let rocketY = 0;
+
+        const rocketSprite = [
+            [0,0,0,0,2,2,0,0,0,0], [0,0,0,2,2,2,2,0,0,0], [0,0,0,1,1,1,1,0,0,0], [0,0,1,1,1,1,1,1,0,0],
+            [0,0,1,1,3,3,1,1,0,0], [0,0,1,1,3,3,1,1,0,0], [0,0,1,1,1,1,1,1,0,0], [0,2,1,1,1,1,1,1,2,0],
+            [2,2,1,1,1,1,1,1,2,2], [2,2,1,1,1,1,1,1,2,2], [2,0,2,1,1,1,1,2,0,2], [0,0,0,1,1,1,1,0,0,0],
+            [0,0,0,1,0,0,1,0,0,0]
+        ];
+
+
+        function resizeCanvas() {
+            cw = ui.canvas.width = ui.canvas.parentElement.clientWidth;
+            ch = ui.canvas.height = ui.canvas.parentElement.clientHeight;
+            stars = []; celestials = [];
+            for(let i=0; i<80; i++) stars.push({ x: Math.random()*cw, y: Math.random()*ch, s: Math.random()*2+1, v: Math.random()*0.5+0.1 });
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function createExhaust(x, y) {
+            // Hot white core
+            particles.push({ x: x+(Math.random()-0.5)*6, y: y, vx: (Math.random()-0.5)*1, vy: Math.random()*2+4, life: 1, c: '#ffffff' });
+            // Neon outer flames (Cyan/Magenta)
+            particles.push({ x: x+(Math.random()-0.5)*14, y: y, vx: (Math.random()-0.5)*3, vy: Math.random()*4+2, life: 1, c: Math.random()>0.5?'#00f3ff':'#ff00ea' });
+        }
+
+        // UPGRADED EXPLOSION: More particles, variable sizes!
+        function createExplosion(x, y) {
+            for(let i=0; i<120; i++) {
+                let angle = Math.random() * Math.PI * 2;
+                let speed = Math.random() * 15 + 2;
+                explosion.push({ 
+                    x: x, y: y, 
+                    vx: Math.cos(angle)*speed, 
+                    vy: Math.sin(angle)*speed, 
+                    life: 1, 
+                    c: Math.random()>0.5?'#ff3333':'#ff00ea',
+                    s: Math.random()*4+2 // Random particle size
+                });
+            }
+        }
+
+        function drawSprite(sprite, cx, cy, pSize) {
+            const sx = cx - (sprite[0].length * pSize)/2, sy = cy - (sprite.length * pSize)/2;
+            for(let r=0; r<sprite.length; r++) {
+                for(let c=0; c<sprite[r].length; c++) {
+                    const v = sprite[r][c]; if(v===0) continue;
+                    ctx.fillStyle = v===1?'#fff':v===2?'#f33':'#0ff';
+                    ctx.fillRect(sx+c*pSize, sy+r*pSize, pSize, pSize);
+                }
+            }
+            return { bx: cx, by: sy + sprite.length*pSize };
+        }
+
+        function renderLoop() {
+            requestAnimationFrame(renderLoop);
+
+            let elapsed = 0;
+            if (state === 'PLAYING') {
+                elapsed = Date.now() - startTime;
+                if (elapsed < 0) elapsed = 0; 
+
+                currentMult = Math.pow(Math.E, GROWTH_RATE * elapsed);
+                if (currentMult < 1.00) currentMult = 1.00; 
+
+                ui.mult.innerText = currentMult.toFixed(2) + 'x';
+                ui.mult.style.color = currentMult > 2 ? 'var(--green)' : 'var(--text-main)';
+                ui.mult.style.textShadow = currentMult > 5 ? '0 0 20px var(--green)' : '4px 4px 0px rgba(0,0,0,0.8)';
+
+                if (myBet && !myBet.cashedOut) {
+                    ui.btnMain.innerText = 'CASH OUT';
+                    ui.btnSub.innerText = (myBet.amount * currentMult).toFixed(2);
+                }
+            } else if (state === 'WAITING') {
+                ui.mult.innerText = '1.00x';
+                ui.mult.style.color = 'rgba(255,255,255,0.1)';
+                ui.mult.style.textShadow = 'none';
+
+                let waitElapsed = Date.now() - waitStartTime;
+                let timeLeft = Math.max(0, waitDuration - waitElapsed);
+                let progress = (timeLeft / waitDuration) * 100;
+
+                document.getElementById('countdown-fill').style.width = `${progress}%`;
+                ui.stat.innerText = `LAUNCHING IN ${(timeLeft / 1000).toFixed(1)}s`;
+
+                if (timeLeft < 2000) {
+                    ui.stat.style.color = 'var(--cyan)';
+                    document.getElementById('countdown-fill').style.background = 'var(--cyan)';
+                    document.getElementById('countdown-fill').style.boxShadow = '0 0 10px var(--cyan)';
+                } else {
+                    ui.stat.style.color = 'var(--cyan)';
+                    document.getElementById('countdown-fill').style.background = 'var(--cyan)';
+                    document.getElementById('countdown-fill').style.boxShadow = '0 0 10px var(--cyan)';
+                }
+            }
+
+            // --- 1. ATMOSPHERE TRANSITION ---
+            // Calculate flight progress (0 = ground, 1 = deep space)
+            let prog = Math.min((currentMult - 1) / 3, 1); 
+
+            // Deep space background
+            ctx.fillStyle = '#020204';
+            ctx.fillRect(0, 0, cw, ch);
+
+            // Fading atmosphere
+            ctx.globalAlpha = 1 - prog;
+            let grad = ctx.createLinearGradient(0, 0, 0, ch);
+            grad.addColorStop(0, '#0a192f');
+            grad.addColorStop(1, '#1a365d');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, cw, ch);
+            ctx.globalAlpha = 1;
+
+            // --- 2. STARS & PARALLAX ---
+            // FIX: Cap speedMult to 50 so backgrounding the tab doesn't generate 'Infinity'
+            let speedMult = state === 'PLAYING' ? Math.min(1 + (currentMult*0.5), 50) : 0.1;
+
+            // Stars
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + (prog * 0.7)})`; 
+            stars.forEach(s => {
+                s.y += s.v * speedMult * 5;
+                if(s.y > ch) { s.y = 0; s.x = Math.random()*cw; }
+                ctx.fillRect(s.x, s.y, s.s, s.s);
+            });
+
+            // --- 3. DYNAMIC CELESTIAL BODIES (Planets/Galaxies) ---
+            if (state === 'PLAYING' && prog > 0.5 && Math.random() < 0.015 * speedMult) {
+                // Spawn a new retro planet
+                celestials.push({
+                    x: Math.random() * cw,
+                    y: -100,
+                    r: Math.random() * 30 + 10,
+                    color: `hsl(${Math.random() > 0.5 ? 300 : 180}, 80%, 60%)`, // Magenta or Cyan
+                    v: Math.random() * 0.3 + 0.1,
+                    ring: Math.random() > 0.7
+                });
+            }
+
+            celestials.forEach((c, i) => {
+                c.y += c.v * speedMult * 5;
+                // Draw Planet
+                ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI*2);
+                ctx.fillStyle = c.color; ctx.fill();
+                // Draw Ring
+                if (c.ring) {
+                    ctx.beginPath(); ctx.ellipse(c.x, c.y, c.r*2, c.r*0.4, Math.PI/8, 0, Math.PI*2);
+                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
+                }
+                if (c.y > ch + 100) celestials.splice(i, 1);
+            });
+
+            // --- 4. THE LAUNCHPAD & EARTH ---
+            if(state === 'PLAYING') earthY += 3 * speedMult;
+            else if(state === 'WAITING') earthY = 0;
+
+            // FIX: Ensure earthY doesn't become Infinity and crash the Canvas arc() function
+            if(earthY < ch + 150 && isFinite(earthY)) {
+                // Base structure
+                ctx.fillStyle = '#11121d';
+                ctx.beginPath();
+                ctx.moveTo(cw/2 - 50, ch - 25 + earthY);
+                ctx.lineTo(cw/2 + 50, ch - 25 + earthY);
+                ctx.lineTo(cw/2 + 70, ch + earthY);
+                ctx.lineTo(cw/2 - 70, ch + earthY);
+                ctx.fill();
+
+                // Neon glowing strip
+                ctx.fillStyle = '#00f3ff';
+                ctx.fillRect(cw/2 - 40, ch - 25 + earthY, 80, 4);
+
+                // Planet Curvature
+                ctx.shadowBlur = 30; ctx.shadowColor = '#00f3ff';
+                ctx.beginPath(); ctx.arc(cw/2, ch + 250 + earthY, cw * 1.5, Math.PI, 0);
+                ctx.fillStyle = '#050508'; ctx.fill(); 
+                ctx.lineWidth = 2; ctx.strokeStyle = '#00f3ff'; ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            // --- 5. ROCKET LOGIC ---
+            if (state === 'CRASHED') {
+                for(let i=explosion.length-1; i>=0; i--) {
+                    let p = explosion[i];
+                    p.x += p.vx; p.y += p.vy; p.life -= 0.02;
+                    if(p.life <= 0) explosion.splice(i,1);
+                    else { 
+                        ctx.globalAlpha = p.life; 
+                        ctx.fillStyle = p.c; 
+                        // Draw variable sized debris
+                        ctx.fillRect(p.x, p.y, p.s || 4, p.s || 4); 
+                    }
+                }
+                ctx.globalAlpha = 1;
+            } else {
+                if(state === 'WAITING') {
+                    // Hover smoothly just above the launchpad
+                    rocketY = ch - 50 + Math.sin(Date.now() / 200) * 4; 
+                } else {
+                    // Cinematic Easing: Smoothly detach from pad and climb to center
+                    let launchProgress = Math.min(elapsed / 1500, 1); // 1.5s to center
+                    let startY = ch - 50;
+                    let targetY = ch / 2;
+                    let easeOut = 1 - Math.pow(1 - launchProgress, 3);
+                    rocketY = startY - ((startY - targetY) * easeOut);
+
+                    // Violent shake at high multipliers
+                    rocketY += currentMult > 3 ? (Math.random()-0.5)*6 : (Math.random()-0.5)*2; 
+                }
+
+                let b = drawSprite(rocketSprite, cw/2, rocketY, 4);
+                if(state === 'PLAYING' || Math.random() > 0.5) {
+                    createExhaust(b.bx, b.by); createExhaust(b.bx, b.by);
+                }
+            }
+
+            // --- 6. EXHAUST PARTICLES ---
+            for(let i=particles.length-1; i>=0; i--) {
+                let p = particles[i];
+                p.x += p.vx; p.y += p.vy * (state==='PLAYING'?speedMult:1); p.life -= 0.04;
+                if(p.life<=0) particles.splice(i,1);
+                else { ctx.globalAlpha=p.life; ctx.fillStyle=p.c; ctx.fillRect(p.x,p.y,4,4); }
+            }
+            ctx.globalAlpha = 1;
+        }
+        requestAnimationFrame(renderLoop);
+        function setBtn(s) {
+            ui.btn.className = '';
+            if(s==='BET') { 
+                if (betMode === 'auto') {
+                    if (autoBetEnabled) {
+                        ui.btn.classList.add('btn-autostop'); 
+                        ui.btnMain.innerText='STOP AUTO'; 
+                        ui.btnSub.innerText='Running...'; 
+                    } else {
+                        ui.btn.classList.add('btn-bet'); 
+                        ui.btnMain.innerText='START AUTO'; 
+                        ui.btnSub.innerText='Infinite Loop'; 
+                    }
+                } else {
+                    ui.btn.classList.add('btn-bet'); 
+                    ui.btnMain.innerText='PLACE BET'; 
+                    ui.btnSub.innerText='Next Round'; 
+                }
+            }
+            if(s==='WAIT') { ui.btn.classList.add('btn-waiting'); ui.btnMain.innerText='WAITING'; ui.btnSub.innerText='Launch Prep'; }
+            if(s==='CASH') { ui.btn.classList.add('btn-cashout'); }
+            if(s==='DIS') { ui.btn.classList.add('btn-disabled'); ui.btnMain.innerText='IN PROGRESS'; ui.btnSub.innerText='Wait next'; }
+            if(s==='WIN') { ui.btn.classList.add('btn-disabled'); ui.btnMain.innerText='SUCCESS'; }
+        }
+
+        function showToast(m) {
+            const t = document.createElement('div'); 
+            t.className = 'toast'; 
+            t.innerHTML = m; // <-- Changed from innerText to innerHTML
+            document.getElementById('toast-container').appendChild(t);
+            setTimeout(() => t.remove(), 3000);
+        }
+
+        function updateStats(p) {
+            if(!p) return;
+            myPlayer = p; // Update global cache
+            myBalance = p.balance; // Note: myBalance is now USDT/USD
+
+            // Calculate USD value
+            const usdValue = myBalance;
+
+            // Format Top Header Balance
+            ui.bal.innerText = `$${usdValue.toFixed(2)}`; 
+
+            // --- NEW: Profile USD Calculations ---
+            ui.stUser.innerText = p.username;
+            ui.stRnd.innerText = p.totalBets;
+
+            const wageredUsd = p.lifetimeWagered;
+            const wonUsd = p.lifetimeWon || 0;
+
+            // Wagered Display
+            ui.stWag.innerText = `$${wageredUsd.toFixed(2)}`;
+            const wagSolEl = document.getElementById('stat-wagered-sol');
+            if (wagSolEl) wagSolEl.innerText = `(${p.lifetimeWagered.toFixed(2)} USDT)`;
+
+            // Total Won Display (Only goes up, always stays green!)
+            ui.stProf.innerText = `$${wonUsd.toFixed(2)}`;
+            ui.stProf.className = 'dash-card-val profit-pos';
+
+            const profSolEl = document.getElementById('stat-profit-sol');
+            if (profSolEl) profSolEl.innerText = `(${wonUsd.toFixed(2)} USDT)`;
+
+            // --- VIP Progress & Rakeback Sync ---
+            const vip = getVipInfo(p.lifetimeWagered);
+
+            // 1. Update Big Emblem
+            const bigIcon = document.getElementById('vip-big-icon');
+            bigIcon.style.borderColor = vip.color;
+            bigIcon.style.boxShadow = `0 0 20px ${vip.color}40`; // 40 is hex opacity for soft glow
+            bigIcon.innerHTML = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="${vip.color}" stroke-width="2" stroke-linejoin="round">
+                <polygon points="12 2 22 12 12 22 2 12" fill="${vip.color}40"></polygon>
+                <polygon points="12 6 18 12 12 18 6 12" fill="${vip.color}"></polygon>
+            </svg>`;
+
+            // 2. Update Names & Colors
+            document.getElementById('vip-rank-name').innerText = vip.name;
+            document.getElementById('vip-rank-name').style.color = vip.color;
+            document.getElementById('vip-rank-name').style.textShadow = `0 0 10px ${vip.color}88`;
+            document.getElementById('vip-progress-fill').style.background = vip.color;
+
+            // 3. Update Progress Math
+            if (vip.next) {
+                document.getElementById('vip-next-name').innerText = `NEXT: ${getVipInfo(vip.next).name}`;
+                document.getElementById('vip-next-name').style.color = getVipInfo(vip.next).color;
+
+                let previousTier = 0;
+                // MUST MATCH THE THRESHOLDS SET IN getVipInfo()!
+                if(vip.name === 'SILVER') previousTier = 500;
+                if(vip.name === 'GOLD') previousTier = 2500;
+                if(vip.name === 'DIAMOND') previousTier = 10000;
+
+                const tierRange = vip.next - previousTier;
+                const progressIntoTier = p.lifetimeWagered - previousTier;
+                let percent = (progressIntoTier / tierRange) * 100;
+
+                document.getElementById('vip-progress-fill').style.width = `${Math.min(percent, 100)}%`;
+
+                document.getElementById('vip-progress-text').innerText = `${p.lifetimeWagered.toFixed(2)} / ${vip.next.toFixed(2)} USDT`;
+            } else {
+                // Elite Max Level
+                document.getElementById('vip-next-name').innerText = 'MAX LEVEL';
+                document.getElementById('vip-next-name').style.color = vip.color;
+                document.getElementById('vip-progress-fill').style.width = `100%`;
+                document.getElementById('vip-progress-text').innerText = `${p.lifetimeWagered.toFixed(2)} USDT WAGERED`;
+            }
+
+            // 4. Update Rakeback Vault (Total Earned minus Already Claimed)
+            const totalRakebackSol = p.lifetimeWagered * 0.0005;
+            const claimedRakebackSol = p.claimedRakeback || 0;
+            const availableRakebackSol = Math.max(0, totalRakebackSol - claimedRakebackSol);
+
+            const availableRakebackUsd = availableRakebackSol; // 1:1
+            document.getElementById('vip-rakeback-val').innerText = `+$${availableRakebackUsd.toFixed(2)}`;
+
+            // --- Affiliate Sync ---
+            const baseUrl = window.location.origin + window.location.pathname;
+            document.getElementById('ref-link-display').value = `${baseUrl}?ref=${p.username}`;
+            document.getElementById('stat-referred-count').innerText = p.totalReferred || 0;
+
+            const availableAffiliateSol = Math.max(0, (p.affiliateEarned || 0) - (p.affiliateClaimed || 0));
+            const availableAffiliateUsd = availableAffiliateSol; // 1:1
+            document.getElementById('stat-affiliate-unpaid').innerText = `+$${availableAffiliateUsd.toFixed(2)}`;
+
+            // --- NEW: Dynamic Withdrawal Limits Sync ---
+            if (currentSolPrice > 0) {
+                const minSol = 22.00 / currentSolPrice;
+                const maxSol = 1000.00 / currentSolPrice;
+
+                const minEl = document.getElementById('withdraw-min-sol');
+                const maxEl = document.getElementById('withdraw-max-sol');
+
+                if (minEl) minEl.innerText = `(~${minSol.toFixed(2)} USDT)`;
+                if (maxEl) maxEl.innerText = `(~${maxSol.toFixed(2)} USDT)`;
+            }
+        }
+
+        function renderLiveTable() {
+            ui.liveBody.innerHTML = '';
+
+            let totalPotUsd = 0;
+            let playersCount = 0;
+
+            let sorted = Object.values(roundBets).sort((a,b) => (b.amount || b.amountUsd || 0) - (a.amount || a.amountUsd || 0));
+
+            sorted.forEach(b => {
+                let isCash = b.cashedOut;
+                let betAmount = b.amount || b.amountUsd || 0;
+
+                // Add to Pot Stats
+                totalPotUsd += betAmount;
+                playersCount++;
+
+                let row = document.createElement('div');
+                let multHtml = isCash ? `<span class="mult-badge">${b.cashoutMult.toFixed(2)}x</span>` : '-';
+                let profStr = isCash ? '+$'+(betAmount * b.cashoutMult - betAmount).toFixed(2) : '-';
+
+                row.className = `live-row ${isCash ? 'cashed' : (state==='CRASHED' ? 'crashed' : '')}`;
+
+                const vip = getVipInfo(b.wagered);
+                row.innerHTML = `
+                    <div class="col-user">
+                        ${vip.badge} <span class="col-user-name" style="color:${vip.color}">${b.username.substring(0,8)}</span>
+                    </div>
+                    <div class="col-bet">$${betAmount.toFixed(2)}</div>
+                    <div class="col-mult">${multHtml}</div>
+                    <div class="col-profit">${profStr}</div>
+                `;
+                ui.liveBody.appendChild(row);
+            });
+
+            // Update Total Pot UI
+            const potTotalEl = document.getElementById('pot-total');
+            const potPlayersEl = document.getElementById('pot-players');
+            if (potTotalEl) potTotalEl.innerText = `$${totalPotUsd.toFixed(2)}`;
+            if (potPlayersEl) potPlayersEl.innerText = playersCount;
+        }
+
+        // Quick Controls
+        window.modifyBet = (type, amt) => {
+            playSfx('click');
+            let val = parseFloat(ui.inpBet.value) || 0;
+            if(type === 'half') val = Math.max(1, val / 2);
+            if(type === 'double') val = val * 2;
+
+            // Calculate max USD based on current SOL balance and price
+            if(type === 'max') {
+                val = (myBalance * currentSolPrice);
+            }
+
+            if(type === 'add') val += amt;
+
+            // Limit decimal places to 2
+            ui.inpBet.value = val.toFixed(2);
+        };
+
+        // --- REAL-TIME TELEMETRY (PING & ONLINE USERS) ---
+
+        // 1. True Ping Calculator (Measures actual server round-trip time)
+        let pingStart = 0;
+        // --- REAL-TIME TELEMETRY (PING & ONLINE USERS) ---
+
+        // 1. True Ping Calculator (Optimized Echo Payload)
+        setInterval(() => {
+            // Send the exact current time to the server
+            socket.emit('ping_req', Date.now()); 
+        }, 2000);
+
+        socket.on('pong_res', (sentTime) => {
+            // Compare the bounced time against the current time
+            const actualPing = Date.now() - sentTime;
+
+            const b1 = document.getElementById('sig-1');
+            const b2 = document.getElementById('sig-2');
+            const b3 = document.getElementById('sig-3');
+            const b4 = document.getElementById('sig-4');
+
+            if (!b1) return;
+
+            const dim = 'rgba(255, 255, 255, 0.15)'; // Inactive bar color
+            const good = 'var(--green)';             // < 150ms
+            const ok = 'var(--green)';              // < 300ms
+            const bad = 'var(--green)';                // > 300ms
+
+            // Dynamically light up the SVG lines based on speed
+            if (actualPing < 150) {
+                // Perfect connection: 4 Green Bars
+                b1.style.stroke = good; b2.style.stroke = good; b3.style.stroke = good; b4.style.stroke = good;
+            } else if (actualPing < 300) {
+                // Okay connection: 3 Yellow Bars
+                b1.style.stroke = ok; b2.style.stroke = ok; b3.style.stroke = ok; b4.style.stroke = dim;
+            } else if (actualPing < 600) {
+                // Poor connection: 2 Red Bars
+                b1.style.stroke = bad; b2.style.stroke = bad; b3.style.stroke = dim; b4.style.stroke = dim;
+            } else {
+                // Critical lag: 1 Red Bar
+                b1.style.stroke = bad; b2.style.stroke = dim; b3.style.stroke = dim; b4.style.stroke = dim;
+            }
+        });
+
+        // 2. True Online Sockets Listener
+        socket.on('online_count', (count) => {
+            document.getElementById('online-count').innerText = count;
+        });
+
+        window.handleAction = () => {
+            playSfx('click');
+
+            if(ui.btn.classList.contains('btn-bet')) {
+                if (betMode === 'manual') {
+                    attemptBet();
+                } else {
+                    autoBetEnabled = true;
+                    attemptBet();
+                    setBtn('BET'); // Trigger UI update to red STOP button
+                }
+            } else if(ui.btn.classList.contains('btn-autostop')) {
+                autoBetEnabled = false;
+                setBtn('BET'); // Revert to START AUTO button
+            } else if(ui.btn.classList.contains('btn-cashout')) {
+                socket.emit('cash_out');
+            }
+        };
+
+        // --- Withdrawal Logic ---
+        window.requestWithdraw = () => {
+            const addr = document.getElementById('withdraw-address').value.trim();
+            const amt = parseFloat(document.getElementById('withdraw-amount').value);
+
+            if(!addr) return showToast('ENTER DESTINATION ADDRESS');
+            if(isNaN(amt) || amt <= 0 || amt > myBalance) return showToast('INVALID AMOUNT');
+
+            // --- FRONTEND USD LIMIT CHECKS ---
+            const amtUsd = amt * currentSolPrice;
+            if (amtUsd < 22.00) return showToast('MIN WITHDRAW IS $22.00');
+            if (amtUsd > 1000.00) return showToast('MAX WITHDRAW IS $1000.00');
+
+            playSfx('click');
+            showToast('PROCESSING TRANSACTION...');
+
+            // Disable button temporarily
+            socket.emit('request_withdraw', { address: addr, amount: amt });
+        };
+
+        // --- Change Password Logic ---
+        window.submitPasswordChange = () => {
+            const currentPass = document.getElementById('cp-current').value;
+            const newPass = document.getElementById('cp-new').value;
+            const confirmPass = document.getElementById('cp-confirm').value;
+
+            if (!currentPass || !newPass || !confirmPass) return showToast('FILL ALL PASSWORD FIELDS');
+            if (newPass !== confirmPass) return showToast('NEW PASSWORDS DO NOT MATCH');
+            if (newPass.length < 5 || newPass.length > 64) return showToast('PASSWORD MUST BE 5-64 CHARACTERS');
+            if (currentPass === newPass) return showToast('NEW PASSWORD MUST BE DIFFERENT');
+
+            playSfx('click');
+            showToast('VERIFYING...');
+
+            // Send to backend
+            socket.emit('change_password', { 
+                currentPassword: currentPass, 
+                newPassword: newPass 
+            });
+        };
+
+        // Listeners for backend responses
+        socket.on('password_changed_success', () => {
+            const lockSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="square" style="vertical-align: middle;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>`;
+            showToast(`${lockSvg} PASSWORD UPDATED!`);
+
+            // Clear the inputs
+            document.getElementById('cp-current').value = '';
+            document.getElementById('cp-new').value = '';
+            document.getElementById('cp-confirm').value = '';
+
+            playSfx('cashout'); // Play success sound
+        });
+
+        socket.on('password_changed_error', (msg) => {
+            showToast('ERROR: ' + msg);
+            playSfx('click'); // Mild error sound
+        });
+
+        // --- Provably Fair Verification ---
+        window.verifySeed = async () => {
+            const seed = document.getElementById('verify-seed').value.trim();
+            if(!seed) return showToast('ENTER A SEED');
+
+            playSfx('click');
+
+            // 1. Hash the seed using the browser's built-in Web Crypto API
+            const msgBuffer = new TextEncoder().encode(seed);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+            // 2. Perform the exact Casino Math to find the Crash Point
+            const h = parseInt(seed.substring(0, 8), 16);
+            const r = h / (Math.pow(2, 32) - 1);
+            let crash = 1.00;
+            if (r > 0.01) { // 1% house edge
+                const res = 0.99 / (1 - r);
+                crash = Math.max(1.00, Math.min(res, 1000000.00));
+            }
+
+            // 3. Display the undeniable mathematical truth
+            document.getElementById('verify-result').style.display = 'block';
+            document.getElementById('vr-hash').innerText = hashHex;
+            document.getElementById('vr-crash').innerText = crash.toFixed(2) + 'x';
+        };
+
+        // --- History Rendering & Modal ---
+        function renderHistoryBar() {
+            // Render the last 15 items in the top floating bar using Color Tiers
+            ui.hist.innerHTML = localHistory.slice(-15).map(v => 
+                `<div class="hist-badge ${getMultTierClass(v.mult)}">${v.mult.toFixed(2)}x</div>`
+            ).join('');
+            ui.hist.scrollLeft = ui.hist.scrollWidth; // Auto-scroll to latest
+        }
+
+        window.openHistoryModal = (event) => {
+            // Stop the click from hiding it immediately
+            if (event) event.stopPropagation();
+            playSfx('click');
+
+            const listEl = document.getElementById('hm-list');
+            listEl.innerHTML = '';
+
+            // Reverse so newest rounds are at the top
+            const reversed = [...localHistory].reverse();
+
+            reversed.forEach((r, i) => {
+                // Determine BC.GAME style color dots
+                let dotColor = 'var(--text-dim)'; // Grey (< 2x)
+                let textColor = 'var(--text-dim)';
+
+                if (r.mult >= 50) { dotColor = 'var(--magenta)'; textColor = 'var(--magenta)'; }
+                else if (r.mult >= 10) { dotColor = 'var(--yellow)'; textColor = 'var(--yellow)'; }
+                else if (r.mult >= 2) { dotColor = 'var(--green)'; textColor = 'var(--green)'; }
+
+                listEl.innerHTML += `
+                    <div class="hp-row">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="hp-dot" style="background: ${dotColor}; box-shadow: 0 0 6px ${dotColor}80;"></div>
+                            <span style="font-family: 'Press Start 2P', monospace; font-size: 8px; color: #444;">#${localHistory.length - i}</span>
+                        </div>
+                        <div style="color: ${textColor}; text-shadow: 0 0 8px ${textColor}40;">${r.mult.toFixed(2)}x</div>
+                    </div>
+                `;
+            });
+
+            // Reveal the sleek popover
+            document.getElementById('history-popover').classList.add('show');
+        };
+
+        socket.on('withdraw_success', (data) => {
+            showToast('WITHDRAWAL SUCCESSFUL!');
+            document.getElementById('withdraw-address').value = '';
+            document.getElementById('withdraw-amount').value = '';
+            playSfx('cashout');
+
+            setTimeout(() => {
+                // FIX: Backend payload changed from finalSentSol to finalSent
+                const sentUsd = (data.finalSent || 0) * currentSolPrice;
+                const checkSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="square" style="vertical-align: middle;"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+                showToast(`${checkSvg} SENT $${sentUsd.toFixed(2)} (Fee Deducted)`);
+            }, 1000);
+        });
+
+        // FIX: Re-render canvas if they minimize the browser and come back
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                setTimeout(resizeCanvas, 50);
+            }
+        });
+
+        window.switchTab = (tab) => {
+            playSfx('click');
+
+            // Hide all tabs and un-highlight all buttons
+            document.querySelectorAll('.view-tab').forEach(e => e.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(e => e.classList.remove('active'));
+
+            // Show selected tab
+            document.getElementById('view-'+tab).classList.add('active');
+
+            // FIX: Recalculate canvas size if returning to the game tab
+            if (tab === 'game') {
+                setTimeout(resizeCanvas, 50);
+            }
+
+            // Highlight the clicked nav button safely
+            const navBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => btn.getAttribute('onclick').includes(tab));
+            if (navBtn) navBtn.classList.add('active');
+
+            // Fetch Live Leaderboard if opening ranks
+            if (tab === 'ranks') {
+                socket.emit('request_leaderboard');
+            }
+        };
+
+        function renderChatMessage(msg) {
+            const container = document.getElementById('chat-messages');
+
+            // Remove empty state if it's there
+            const emptyState = document.getElementById('chat-empty-state');
+            if (emptyState) emptyState.remove();
+
+            const row = document.createElement('div');
+            row.className = 'chat-row';
+
+            // Escape HTML to prevent XSS attacks
+            const safeText = msg.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+            // FIX: Convert server's raw timestamp to the user's Local Time Zone (e.g., 04:20 PM)
+            const localTime = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const vip = getVipInfo(msg.wagered);
+            row.innerHTML = `
+                <div class="chat-header-row">
+                    <div class="chat-user-info">
+                        ${vip.badge}
+                        <span class="chat-name" style="color: ${vip.color}; text-shadow: 0 0 5px ${vip.color}40;">${msg.username}</span>
+                    </div>
+                    <span class="chat-time">${localTime}</span>
+                </div>
+                <div class="chat-text">${safeText}</div>
+            `;
+            container.appendChild(row);
+
+            // Auto-scroll to bottom
+            container.scrollTop = container.scrollHeight;
+        }
+
+        window.sendChat = () => {
+            const input = document.getElementById('chat-input');
+            const text = input.value.trim();
+            if(text) {
+                socket.emit('send_chat', text);
+                input.value = '';
+                playSfx('click');
+            }
+        };
+
+        socket.on('chat_message', (msg) => {
+            renderChatMessage(msg);
+        });
+
+        socket.on('leaderboard_data', (data) => {
+            const lbBody = document.getElementById('leaderboard-body');
+            lbBody.innerHTML = '';
+
+            if (!data || data.length === 0) {
+                lbBody.innerHTML = '<div style="font-size: 12px; color: var(--text-dim);">No players yet.</div>';
+                return;
+            }
+
+            data.forEach((player, index) => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.fontSize = '18px';
+                row.style.borderBottom = '1px solid #222';
+                row.style.padding = '8px 0';
+
+                // Colorize the top 3 players (Gold, Cyan, White)
+                row.style.color = index === 0 ? 'var(--yellow)' : (index < 3 ? 'var(--cyan)' : 'var(--text-main)');
+
+                // Convert their SOL profit to USD using the live oracle price
+                const profitUsd = parseFloat(player.net_profit) * currentSolPrice;
+                const isPositive = profitUsd >= 0;
+
+                row.innerHTML = `
+                    <div style="flex: 0.5; text-align: left; opacity: 0.7;">${index + 1}</div>
+                    <div style="flex: 2; text-align: left; font-family: 'Press Start 2P'; font-size: 8px; display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis;">
+                        ${player.username}
+                    </div>
+                    <div style="flex: 1.5; text-align: right; color: ${isPositive ? 'var(--green)' : 'var(--red)'};">
+                        ${isPositive ? '+' : '-'}$${Math.abs(profitUsd).toFixed(2)}
+                    </div>
+                `;
+                lbBody.appendChild(row);
+            });
+        });
+
+                                                                                                 
+
+        function copyAddress(event) {
+            // Stop the click from immediately hiding the popup
+            if (event) event.stopPropagation();
+
+            const el = document.getElementById('deposit-address');
+            const addr = el.getAttribute('data-full');
+
+            if (addr && addr.startsWith('T')) {
+                // 1. Copy to clipboard
+                navigator.clipboard.writeText(addr);
+                const copySvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" style="vertical-align: middle;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>`;
+                showToast(`${copySvg} ADDRESS COPIED`);
+
+                // 2. Get DOM elements
+                const qrPop = document.getElementById('qr-popover');
+                const qrImg = document.getElementById('qr-image');
+                const qrSpinner = document.getElementById('qr-spinner');
+
+                // 3. Reset state: Show spinner, hide image
+                qrSpinner.style.display = 'block';
+                qrImg.style.display = 'none';
+                qrPop.classList.add('show');
+
+                // 4. Set a listener for when the image finishes downloading
+                qrImg.onload = () => {
+                    qrSpinner.style.display = 'none'; // Hide spinner
+                    qrImg.style.display = 'block';    // Reveal QR code
+                };
+
+                // 5. Trigger the download
+                qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${addr}`;
+
+            } else {
+                showToast('WALLET LOADING...');
+            }
+        }
+
+        // --- GLOBAL CLICK LISTENER: Auto-Hide Popovers ---
+        document.addEventListener('click', (e) => {
+            // Hide QR Popover
+            const qrPop = document.getElementById('qr-popover');
+            if (qrPop && qrPop.classList.contains('show') && !qrPop.contains(e.target)) {
+                qrPop.classList.remove('show');
+            }
+
+            // Hide History Popover
+            const histPop = document.getElementById('history-popover');
+            if (histPop && histPop.classList.contains('show') && !histPop.contains(e.target)) {
+                histPop.classList.remove('show');
+            }
+        });
+
+        // Update your socket.on('init') to look like this:
+        socket.on('init', (d) => {
+            updateStats(d.player);
+            state = d.state;
+            currentHash = d.hash || ''; 
+            currentSeed = d.seed || '';
+
+            // Clear and render chat history safely
+            const chatBox = document.getElementById('chat-messages');
+            if(d.chatHistory && d.chatHistory.length > 0) {
+                chatBox.innerHTML = ''; // Only clear if there are actually messages
+                d.chatHistory.forEach(renderChatMessage);
+            }
+
+            // Show Deposit Address cleanly inside the pill
+            if(d.player && d.player.depositAddress) {
+                const depEl = document.getElementById('deposit-address');
+                if (depEl) {
+                    const shortAddr = d.player.depositAddress.substring(0,4) + '...' + d.player.depositAddress.slice(-4);
+                    depEl.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> ${shortAddr}`;
+                    depEl.setAttribute('data-full', d.player.depositAddress); 
+                }
+            }
+
+            localHistory = d.history || [];
+            renderHistoryBar();
+            roundBets = d.activeBets || {};
+
+            // Multi-Tab Memory Sync 
+            if (d.player && d.player.id && roundBets[d.player.id] && !roundBets[d.player.id].cashedOut) {
+                myBet = { amount: roundBets[d.player.id].amountUsd, cashedOut: false };
+            } else {
+                myBet = null;
+            }
+
+            renderLiveTable();
+
+            if(state==='PLAYING') { 
+                // Sync perfectly using elapsed time
+                startTime = Date.now() - (d.elapsed || 0); 
+                ui.stat.innerText=''; 
+                setBtn(myBet ? 'CASH' : 'DIS'); 
+            } else { 
+                setBtn(myBet ? 'WAIT' : 'BET'); 
+
+                // Show countdown if currently waiting
+                if(state==='WAITING') {
+                    waitDuration = d.waitTime || 6000;
+                    waitStartTime = Date.now() - (d.elapsed || 0);
+                    const countdownElement = document.getElementById('countdown-wrap');
+                    if (countdownElement) countdownElement.style.display = 'flex';
+                }
+            }
+        });
+
+        socket.on('game_waiting', (d) => {
+            state = 'WAITING'; currentMult = 1.0;
+            waitDuration = d.waitTime || 6000;
+            waitStartTime = Date.now();
+
+            const countdownElement = document.getElementById('countdown-wrap');
+            if(countdownElement) countdownElement.style.display = 'flex';
+
+            currentHash = d.hash || '';  
+            currentSeed = ''; 
+
+            ui.mult.innerText = '1.00x'; ui.mult.style.color = 'var(--text-main)';
+            ui.stat.innerText = 'PREPARING LAUNCH...'; ui.stat.style.color = 'var(--cyan)';
+            myBet = null; particles = []; explosion = []; roundBets = {};
+            localHistory = d.history || [];
+            renderHistoryBar();
+            ui.hist.scrollLeft = ui.hist.scrollWidth;
+            setBtn('BET');
+            renderLiveTable();
+
+            // --- THE AUTO-BET LOOP (ANTI-THROTTLE) ---
+            if (autoBetEnabled) {
+                timerWorker.postMessage({ command: 'start', delay: 1000 });
+            }
+        });
+
+        socket.on('game_start', (d) => {
+            const countdownElement = document.getElementById('countdown-wrap');
+            if(countdownElement) countdownElement.style.display = 'none';
+
+            state = 'PLAYING'; 
+            startTime = Date.now(); // Lock exact local browser time
+            ui.stat.innerText = '';
+            playSfx('launch');
+            setBtn(myBet ? 'CASH' : 'DIS');
+            renderLiveTable();
+        });
+
+        socket.on('game_crashed', (d) => {
+            const countdownElement = document.getElementById('countdown-wrap');
+            if(countdownElement) countdownElement.style.display = 'none';
+
+            localHistory.push({ mult: d.crashPoint, seed: d.seed, hash: d.hash || currentHash });
+            if (localHistory.length > 50) localHistory.shift();
+            renderHistoryBar();
+
+            currentSeed = d.seed || '';
+
+            state = 'CRASHED';
+            ui.mult.innerText = d.crashPoint.toFixed(2) + 'x';
+            ui.mult.style.color = 'var(--red)'; ui.mult.style.textShadow = '0 0 20px var(--red)';
+            ui.stat.innerText = 'Crushed!'; ui.stat.style.color = 'var(--red)';
+            playSfx('crash');
+
+            // FIXED: Using the global 'cw' and dynamic 'rocketY' so it explodes exactly on the rocket!
+            createExplosion(cw/2, rocketY);
+
+            if(myBet && !myBet.cashedOut) { setBtn('DIS'); ui.btnMain.innerText='CRASHED'; ui.btnSub.innerText='Bet Lost'; }
+            renderLiveTable(); // Updates styling for crashed
+        });
+
+        socket.on('bet_accepted', (d) => {
+            updateStats(d.stats);
+            myBet = { amount: d.amount, cashedOut: false };
+
+            // SECURITY/UI FIX: If the game already started by the time we process this packet, 
+            // instantly turn the button into the active CASH OUT button!
+            if (state === 'PLAYING') {
+                setBtn('CASH');
+            } else {
+                setBtn('WAIT');
+            }
+
+            showToast('BET PLACED');
+        });
+
+        socket.on('cashout_success', (d) => {
+            if(myBet) myBet.cashedOut = true;
+            updateStats(d.stats);
+            setBtn('WIN'); ui.btnSub.innerText = '+'+d.winAmount;
+            playSfx('cashout');
+
+            // Check the reason for cashout
+            if (d.reason === 'MAX_PAYOUT') {
+                const trophySvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ffd500" stroke-width="2" stroke-linecap="square"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10c3 0 5 2 5 5s-2 5-5 5H7c-3 0-5-2-5-5s2-5 5-5z"/></svg>`;
+                showToast(`${trophySvg} MAX PAYOUT: $${d.winAmount}`);
+            } else {
+                showToast(`CASHED OUT: ${d.multiplier}x`);
+            }
+        });
+
+        socket.on('player_bet', (d) => {
+            roundBets[d.id] = { username: d.username, amount: d.amount, cashedOut: false, wagered: d.wagered }; // ADDED wagered
+            renderLiveTable();
+        });
+
+        socket.on('player_cashed_out', (d) => {
+            if(roundBets[d.id]) {
+                roundBets[d.id].cashedOut = true;
+                roundBets[d.id].cashoutMult = parseFloat(d.multiplier);
+                renderLiveTable();
+            }
+        });
+        // --- Connection Drop Fail-Safe ---
+        socket.on('disconnect', () => {
+            // 1. Instantly freeze the game loop math
+            state = 'DISCONNECTED';
+
+            // 2. Turn the UI red to alert the user
+            ui.stat.innerText = 'CONNECTION LOST. RECONNECTING...';
+            ui.stat.style.color = 'var(--red)';
+            ui.mult.style.color = 'var(--red)';
+            ui.mult.style.textShadow = '0 0 20px var(--red)';
+
+            // 3. Immediately kill any Auto-Bet loops
+            autoBetEnabled = false;
+
+            // 4. Disable all betting and cashout buttons securely
+            setBtn('DIS');
+            ui.btnMain.innerText = 'OFFLINE';
+            ui.btnSub.innerText = 'Server unreachable';
+
+            showToast('SERVER CONNECTION LOST');
+        });
+
+        // When the server comes back online, Socket.io will automatically reconnect.
+        // It will trigger the 'init' event again, completely restoring the game state 
+        // to match the server, turning the buttons back on, and un-freezing the screen!
+        socket.on('connect', () => {
+            if (state === 'DISCONNECTED') {
+                showToast('RECONNECTED TO SERVER!');
+            }
+        });
+
+        socket.on('error_msg', m => showToast('ERROR: '+m));
+    </script>
+</body>
+</html>

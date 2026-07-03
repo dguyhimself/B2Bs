@@ -38,13 +38,6 @@
             position: relative; /* <-- ADD THIS LINE */
         }
 
-        /* Scanlines */
-        body::after {
-            content: ""; position: absolute; top: 0; left: 0; width: 100vw; height: 100dvh;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-            z-index: 9999; background-size: 100% 4px, 6px 100%; pointer-events: none;
-        }
-
         /* Audio Unlock Overlay */
         #audio-overlay {
             position: fixed; top:0; left:0; width:100vw; height:100dvh;
@@ -71,7 +64,7 @@
         .bal-wrap { display: flex; flex-direction: column; gap: 6px; }
         .bal-label-row { display: flex; align-items: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); letter-spacing: 1px; }
         .bal-val-row { display: flex; align-items: baseline; gap: 8px; }
-        #balance-display { font-size: 28px; color: var(--yellow); text-shadow: 0 0 12px rgba(255, 213, 0, 0.4); line-height: 1; }
+        #balance-display { font-size: 30px; color: var(--yellow); text-shadow: 0 0 12px rgba(255, 213, 0, 0.4); line-height: 1; }
         #balance-sol { font-size: 14px; color: var(--green); opacity: 0.8; letter-spacing: 1px; }
 
         /* Refresh Button */
@@ -306,12 +299,12 @@
         #live-table-body { display: flex; flex-direction: column; gap: 6px; }
 
         /* Individual Player Cards */
+        /* Individual Player Cards */
         .live-row { 
             display: flex; justify-content: space-between; align-items: center;
-            background: rgba(17, 18, 29, 0.6); border: 1px solid var(--panel-border); /* Glass effect */
+            background: rgba(17, 18, 29, 0.6); border: none;
             padding: 10px 15px; border-radius: 6px; 
-            font-family: 'VT323', monospace; font-size: 20px; color: #fff;
-            animation: fadeIn 0.3s;
+            font-family: 'Inter', sans-serif; font-size: 20px; color: #fff;
             backdrop-filter: blur(4px);
         }
 
@@ -439,7 +432,7 @@
 
         .input-wrap { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; border-bottom: 1px dashed #23253b; padding-bottom: 4px;}
         .input-wrap span { font-size: 14px; color: var(--text-dim); font-weight: bold; }
-        .input-wrap input { background: transparent; border: none; color: white; font-family: 'VT323', monospace; font-size: 20px; outline: none; width: 100%; }
+        .input-wrap input { background: transparent; border: none; color: white; font-family: 'VT323', monospace; font-size: 24px; outline: none; width: 100%; }
 
         /* Compact Quick Actions */
         .quick-actions { display: flex; gap: 4px; }
@@ -634,7 +627,7 @@
         /* Individual Player Cards */
         .live-row { 
             display: flex; justify-content: space-between; align-items: center;
-            background: #11121d; border: 1px solid var(--panel-border);
+            background: #11121d; border: none;
             padding: 10px 15px; border-radius: 6px; 
             font-family: 'VT323', monospace; font-size: 20px; color: #fff;
             animation: fadeIn 0.3s;
@@ -941,8 +934,8 @@
                 </button>
 
                 <!-- NEW: Disclaimer Note -->
-                <div style="font-size: 10px; color: var(--text-dim); margin-top: 12px; text-align: center; line-height: 1.4;">
-                    <span style="color: var(--yellow);">Note:</span> Withdrawals under $22.00 USD will be automatically rejected to cover Solana priority network fees.
+                <div style="font-size: 10px; color: var(--text-dim); margin-top: 12px; text-align: center; line-height: 1.4; font-size: 12px;">
+                    <span style="color: var(--yellow);">Note:</span> Withdrawals under $22.00 USD will be automatically rejected to cover TRC20 priority network fees.
                 </div>
             </div>
 
@@ -1346,7 +1339,7 @@
             if(type === 'click') playTone(600, 'square', 0.1, 0.05);
             if(type === 'launch') { playTone(200, 'sawtooth', 0.5, 0.1); setTimeout(()=>playTone(300, 'sawtooth', 0.5, 0.1), 100); }
             if(type === 'cashout') { playTone(523.25, 'square', 0.1); setTimeout(()=>playTone(659.25, 'square', 0.2), 100); setTimeout(()=>playTone(783.99, 'square', 0.3), 200); }
-            if(type === 'crash') { playNoise(1.5, 0.5); ui.canvas.parentElement.classList.add('shake'); setTimeout(()=>ui.canvas.parentElement.classList.remove('shake'), 400); }
+            if(type === 'crash') { playNoise(1.5, 0.5); }
         }
 
         // --- VIP Ranking System (USDT Scale) ---
@@ -1454,7 +1447,7 @@
                 }
             } else if (state === 'WAITING') {
                 ui.mult.innerText = '1.00x';
-                ui.mult.style.color = 'rgba(255,255,255,0.1)';
+                ui.mult.style.color = '#ffffff';
                 ui.mult.style.textShadow = 'none';
 
                 let waitElapsed = Date.now() - waitStartTime;
@@ -1740,45 +1733,73 @@
             }
         }
 
-        function renderLiveTable() {
-            ui.liveBody.innerHTML = '';
+        // --- RENDER THROTTLER ---
+        // Prevents the DOM from crashing/lagging when 200 bots bet simultaneously
+        let renderScheduled = false;
+        function scheduleRender() {
+            if (!renderScheduled) {
+                renderScheduled = true;
+                requestAnimationFrame(() => {
+                    renderLiveTable();
+                    renderScheduled = false;
+                });
+            }
+        }
 
+        // --- SURGICAL DOM RENDERER & CSS AUTO-SORTING ---
+        function updateLivePotStats() {
             let totalPotUsd = 0;
             let playersCount = 0;
-
-            let sorted = Object.values(roundBets).sort((a,b) => (b.amount || b.amountUsd || 0) - (a.amount || a.amountUsd || 0));
-
-            sorted.forEach(b => {
-                let isCash = b.cashedOut;
-                let betAmount = b.amount || b.amountUsd || 0;
-
-                // Add to Pot Stats
-                totalPotUsd += betAmount;
+            Object.values(roundBets).forEach(b => {
+                totalPotUsd += (b.amount || b.amountUsd || 0);
                 playersCount++;
-
-                let row = document.createElement('div');
-                let multHtml = isCash ? `<span class="mult-badge">${b.cashoutMult.toFixed(2)}x</span>` : '-';
-                let profStr = isCash ? '+$'+(betAmount * b.cashoutMult - betAmount).toFixed(2) : '-';
-
-                row.className = `live-row ${isCash ? 'cashed' : (state==='CRASHED' ? 'crashed' : '')}`;
-
-                const vip = getVipInfo(b.wagered);
-                row.innerHTML = `
-                    <div class="col-user">
-                        ${vip.badge} <span class="col-user-name" style="color:${vip.color}">${b.username.substring(0,8)}</span>
-                    </div>
-                    <div class="col-bet">$${betAmount.toFixed(2)}</div>
-                    <div class="col-mult">${multHtml}</div>
-                    <div class="col-profit">${profStr}</div>
-                `;
-                ui.liveBody.appendChild(row);
             });
-
-            // Update Total Pot UI
             const potTotalEl = document.getElementById('pot-total');
             const potPlayersEl = document.getElementById('pot-players');
             if (potTotalEl) potTotalEl.innerText = `$${totalPotUsd.toFixed(2)}`;
             if (potPlayersEl) potPlayersEl.innerText = playersCount;
+        }
+
+        function addOrUpdateBetRow(id, b) {
+            let row = document.getElementById('bet-row-' + id);
+            let betAmount = b.amount || b.amountUsd || 0;
+
+            // CSS Flexbox Magic: Negative order makes higher bets naturally float to the top!
+            let flexOrder = Math.floor(-betAmount * 100); 
+
+            let isCash = b.cashedOut;
+            let multHtml = isCash ? `<span class="mult-badge">${b.cashoutMult.toFixed(2)}x</span>` : '-';
+            let profStr = isCash ? '+$'+(betAmount * b.cashoutMult - betAmount).toFixed(2) : '-';
+            const vip = getVipInfo(b.wagered);
+
+            if (row) {
+                // Surgically update existing row WITHOUT deleting it
+                row.className = `live-row ${isCash ? 'cashed' : (state === 'CRASHED' ? 'crashed' : '')}`;
+                row.querySelector('.col-mult').innerHTML = multHtml;
+                row.querySelector('.col-profit').innerHTML = profStr;
+            } else {
+                // Insert a brand new row smoothly
+                let htmlStr = `
+                    <div id="bet-row-${id}" class="live-row ${isCash ? 'cashed' : (state === 'CRASHED' ? 'crashed' : '')}" style="order: ${flexOrder};">
+                        <div class="col-user">
+                            ${vip.badge} <span class="col-user-name" style="color:${vip.color}">${b.username.substring(0,8)}</span>
+                        </div>
+                        <div class="col-bet">$${betAmount.toFixed(2)}</div>
+                        <div class="col-mult">${multHtml}</div>
+                        <div class="col-profit">${profStr}</div>
+                    </div>
+                `;
+                ui.liveBody.insertAdjacentHTML('beforeend', htmlStr);
+            }
+        }
+
+        // Only runs once per round to reset the table cleanly
+        function renderLiveTable() {
+            ui.liveBody.innerHTML = ''; 
+            Object.entries(roundBets).forEach(([id, b]) => {
+                addOrUpdateBetRow(id, b);
+            });
+            updateLivePotStats();
         }
 
         // Quick Controls
@@ -2218,7 +2239,7 @@
 
             renderLiveTable();
 
-            if(state==='PLAYING') { 
+        if(state==='PLAYING') { 
                 // Sync perfectly using elapsed time
                 startTime = Date.now() - (d.elapsed || 0); 
                 ui.stat.innerText=''; 
@@ -2234,6 +2255,9 @@
                     if (countdownElement) countdownElement.style.display = 'flex';
                 }
             }
+
+            // Fetch leaderboard immediately in the background on load!
+            socket.emit('request_leaderboard');
         });
 
         socket.on('game_waiting', (d) => {
@@ -2271,7 +2295,6 @@
             ui.stat.innerText = '';
             playSfx('launch');
             setBtn(myBet ? 'CASH' : 'DIS');
-            renderLiveTable();
         });
 
         socket.on('game_crashed', (d) => {
@@ -2294,7 +2317,13 @@
             createExplosion(cw/2, rocketY);
 
             if(myBet && !myBet.cashedOut) { setBtn('DIS'); ui.btnMain.innerText='CRASHED'; ui.btnSub.innerText='Bet Lost'; }
-            renderLiveTable(); // Updates styling for crashed
+            // Surgically turn all remaining active bets gray without lagging the browser
+            Object.keys(roundBets).forEach(id => {
+                if (!roundBets[id].cashedOut) {
+                    const row = document.getElementById('bet-row-' + id);
+                    if (row) row.classList.add('crashed');
+                }
+            }); // Updates styling for crashed
         });
 
         socket.on('bet_accepted', (d) => {
@@ -2328,15 +2357,17 @@
         });
 
         socket.on('player_bet', (d) => {
-            roundBets[d.id] = { username: d.username, amount: d.amount, cashedOut: false, wagered: d.wagered }; // ADDED wagered
-            renderLiveTable();
+            roundBets[d.id] = { username: d.username, amount: d.amount, cashedOut: false, wagered: d.wagered }; 
+            addOrUpdateBetRow(d.id, roundBets[d.id]);
+            updateLivePotStats(); // Only update pot when new bets arrive
         });
 
         socket.on('player_cashed_out', (d) => {
             if(roundBets[d.id]) {
                 roundBets[d.id].cashedOut = true;
                 roundBets[d.id].cashoutMult = parseFloat(d.multiplier);
-                renderLiveTable();
+                addOrUpdateBetRow(d.id, roundBets[d.id]);
+                // No need to update the Pot Stats here, saving even more CPU!
             }
         });
         // --- Connection Drop Fail-Safe ---

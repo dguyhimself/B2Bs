@@ -653,11 +653,6 @@
     </style>
 </head>
 <body>
-
-    <div id="audio-overlay" onclick="initAudioAndStart()">
-        <div class="pulse-text">TAP TO START<br><br><span style="font-size:10px; color:#888;">ENABLES 8-BIT AUDIO</span></div>
-    </div>
-
     <div id="header">
         <!-- Left: Balance -->
         <div class="bal-wrap">
@@ -1294,13 +1289,15 @@
             }
         };
 
-        function initAudioAndStart() {
-            document.getElementById('audio-overlay').style.display = 'none';
-            const AudioContext = window.AudioContext || window.webkitAudioContext;
-            actx = new AudioContext();
-            audioEnabled = true;
-            playSfx('click');
-        }
+        // Seamlessly unlock audio on the very first tap or click anywhere on the page
+        document.addEventListener('click', function initAudio() {
+            if (!actx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                actx = new AudioContext();
+                audioEnabled = true;
+            }
+            document.removeEventListener('click', initAudio);
+        }, { once: true });
 
         function playTone(freq, type, duration, vol=0.1) {
             if(!audioEnabled || !actx) return;

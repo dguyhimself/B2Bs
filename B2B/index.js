@@ -110,6 +110,132 @@ let activeBets = {};
 // --- Affiliate Commission Batcher ---
 const pendingCommissions = {};
 
+// --- BOT SYSTEM (FAKE USERS & ACTIVITY) ---
+let fakeOnlineCount = 250;
+
+// Fluctuate online users randomly every 5 seconds
+setInterval(() => {
+    fakeOnlineCount += Math.floor(Math.random() * 11) - 5; // changes by -5 to +5
+    if (fakeOnlineCount < 200) fakeOnlineCount = 200;
+    if (fakeOnlineCount > 300) fakeOnlineCount = 300;
+    io.emit('online_count', io.engine.clientsCount + fakeOnlineCount);
+}, 5000);
+
+// Function to generate a realistic bot bet
+function placeBotBet(index) {
+    if (currentState !== GAME_STATE.WAITING) return; // Prevent betting if game already started
+
+    const botId = 'BOT_' + index + '_' + Date.now();
+    const hex = crypto.randomBytes(2).toString('hex').toUpperCase();
+    const username = 'PLYR_' + hex;
+
+    // Humanized Bet Amounts (Humans love round numbers)
+    let amount = 0;
+    const rand = Math.random();
+    if (rand < 0.45) {
+        // 45% chance of standard small round numbers
+        const smallTiers = [1, 2, 3, 5, 10];
+        amount = smallTiers[Math.floor(Math.random() * smallTiers.length)];
+    } else if (rand < 0.75) {
+        // 30% chance of medium round numbers
+        const medTiers = [15, 20, 25, 50, 75, 100];
+        amount = medTiers[Math.floor(Math.random() * medTiers.length)];
+    } else if (rand < 0.90) {
+        // 15% chance of completely random decimal numbers (to look organic)
+        amount = parseFloat(((Math.random() * 49) + 1).toFixed(2));
+    } else {
+        // 10% High Rollers
+        const highTiers = [150, 200, 250, 500, 1000, 1500];
+        amount = highTiers[Math.floor(Math.random() * highTiers.length)];
+    }
+
+    // Random wagered amount to give them varying VIP badges
+    const wagered = Math.random() * 15000;
+
+    // Target cashout multiplier (Behavior)
+    let target = 1.01;
+    const tRand = Math.random();
+    if (tRand < 0.3) target = 1.1 + Math.random() * 0.4; // Safe players (1.1x - 1.5x)
+    else if (tRand < 0.7) target = 1.5 + Math.random() * 1.5; // Normal players (1.5x - 3.0x)
+    else if (tRand < 0.9) target = 3.0 + Math.random() * 7.0; // Risky players (3.0x - 10.0x)
+    else target = 10.0 + Math.random() * 90.0; // Moonboys (10.0x - 100.0x)
+
+    // Store in active bets but flag as Bot so it doesn't touch the Database!
+    activeBets[botId] = {
+        isBot: true,
+        username: username,
+        amountUsd: amount,
+        targetMult: target,
+        cashedOut: false,
+        wagered: wagered
+    };
+
+    io.emit('player_bet', { id: botId, username: username, amount: amount, wagered: wagered });
+}
+
+// Function to handle bot cashout
+function processBotCashout(botId, mult) {
+    if (currentState !== GAME_STATE.PLAYING) return;
+    const bet = activeBets[botId];
+    if (!bet || bet.cashedOut) return;
+
+    bet.cashedOut = true;
+    bet.cashoutMult = mult;
+    const winAmountUsd = bet.amountUsd * mult;
+
+    io.emit('player_cashed_out', {
+        id: botId,
+        username: bet.username,
+        multiplier: mult.toFixed(2),
+        winAmount: winAmountUsd.toFixed(2)
+    });
+}
+// --- END BOT SYSTEM ---
+
+// --- BOT CHAT SYSTEM (HIGHLY REALISTIC) ---
+const botChatPhrases = {
+    general: ["LFG", "sol to the moon", "anyone winning?", "this game is addictive", "W", "GG", "bruh", "lol", "gl all", "hi", "yoo", "let's get this bread", "who has a promo code?", "green today boys"],
+    waiting: ["skipping this one", "all in", "feeling a 10x", "here we go", "don't get greedy guys", "red or green?", "send it", "betting max", "my balance is crying", "let it ride"],
+    crash_early: ["rigged", "lmao", "of course", "gg", "wtf", "rip my balance", "unlucky", "always at 1x", "brooo", "F", "scam", "i hate this game", "bruhhhh"],
+    crash_late: ["omg who held?", "insane", "I cashed out too early...", "holy shit", "huge W", "damn", "beautiful multiplier", "to the moon!", "wow", "easy money"]
+};
+
+function triggerBotChat(type) {
+    // 50% chance a bot actually decides to type something so it's not robotic/spammy
+    if (Math.random() > 0.5) return; 
+
+    const phrases = botChatPhrases[type] || botChatPhrases.general;
+    const text = phrases[Math.floor(Math.random() * phrases.length)];
+
+    // Generate a random bot player profile
+    const hex = crypto.randomBytes(2).toString('hex').toUpperCase();
+    const username = 'PLYR_' + hex;
+    const wagered = Math.random() * 20000; // Gives them random Bronze/Silver/Gold/Diamond badges
+
+    const msgData = {
+        id: Date.now() + Math.random(),
+        username: username,
+        text: text,
+        timestamp: Date.now(),
+        wagered: wagered,
+        isBot: true
+    };
+
+    // Save to memory so new tabs can see it, and broadcast to everyone
+    chatHistory.push(msgData);
+    if (chatHistory.length > 50) chatHistory.shift();
+
+    io.emit('chat_message', msgData);
+}
+
+// Background idle chatter every 8-15 seconds
+setInterval(() => {
+    if (currentState === GAME_STATE.WAITING || currentState === GAME_STATE.PLAYING) {
+        if (Math.random() < 0.4) triggerBotChat('general');
+    }
+}, 10000);
+// --- END BOT CHAT SYSTEM ---
+
 function generateUsername(socketId) {
     return 'PLYR_' + socketId.substring(0, 4).toUpperCase();
 }
@@ -163,6 +289,23 @@ function startWaiting() {
     currentServerSeed = crypto.randomBytes(32).toString('hex');
     currentHash = crypto.createHash('sha256').update(currentServerSeed).digest('hex');
 
+    // Spawn 50 to 230 fake bots every single round
+    const numBots = Math.floor(Math.random() * (230 - 50 + 1)) + 50;
+    for(let i = 0; i < numBots; i++) {
+        let delay;
+        if (Math.random() < 0.4) {
+            // 40% of players rush to bet in the first 1.5 seconds
+            delay = Math.random() * 1500;
+        } else {
+            // 60% of players casually place bets throughout the wait time
+            delay = Math.random() * (WAIT_TIME_MS - 500); 
+        }
+        setTimeout(() => placeBotBet(i), delay);
+    }
+    // Bots chatting during the wait time
+    setTimeout(() => triggerBotChat('waiting'), 1500 + Math.random() * 1000);
+    setTimeout(() => triggerBotChat('waiting'), 3500 + Math.random() * 1000);
+
     io.emit('game_waiting', { 
         waitTime: WAIT_TIME_MS,
         history: crashHistory.slice(-50),
@@ -187,6 +330,18 @@ function startGame() {
     // Evaluate Auto-Cashouts & MAX PAYOUT Limits
     for (const userId in activeBets) {
         const bet = activeBets[userId];
+
+        // --- BOT CASHOUT LOGIC ---
+        if (bet.isBot) {
+            // If the bot's target is lower than the crash point, schedule their cashout!
+            if (bet.targetMult <= currentCrashPoint) {
+                const autoTimeMs = Math.log(bet.targetMult) / GROWTH_RATE;
+                setTimeout(() => processBotCashout(userId, bet.targetMult), autoTimeMs);
+            }
+            // Skip the rest of the loop so bots don't use real user logic
+            continue; 
+        }
+        // -------------------------
 
         // Calculate at what multiplier this user hits the $5,000 Max Payout
         const maxPayoutMultiplier = MAX_PAYOUT_USD / bet.amountUsd;
@@ -233,6 +388,8 @@ async function crashGame() {
     // 1. Gather all losing players into a list and update server RAM instantly
     const lossUpdates = [];
     for(const id in activeBets) {
+        if (activeBets[id].isBot) continue; // SECURITY: Ignore bots so they don't touch the DB!
+
         if(!activeBets[id].cashedOut && players[id]) {
             // SECURE MATH
             players[id].netProfit = safeSub(players[id].netProfit, activeBets[id].amountUsd);
@@ -259,6 +416,21 @@ async function crashGame() {
             }).eq('id', u.id)
         )).catch(err => console.error("Batch DB Update Error:", err));
     }
+
+    // --- BOT CHAT REACTION LOGIC ---
+    // Bots read the crash multiplier and react like real humans
+    let crashReactionType = 'general';
+    if (currentCrashPoint < 2.0) {
+        crashReactionType = 'crash_early'; // Rage, rigged, F
+    } else if (currentCrashPoint > 10.0) {
+        crashReactionType = 'crash_late'; // OMG, massive W, insane
+    }
+
+    // Stagger their typing speed so it looks like humans typing after the explosion
+    setTimeout(() => triggerBotChat(crashReactionType), 800 + Math.random() * 1000);
+    setTimeout(() => triggerBotChat(crashReactionType), 1500 + Math.random() * 1500);
+    setTimeout(() => triggerBotChat('general'), 2500 + Math.random() * 1500);
+    // --------------------------------
 
     // --- SECURITY: POST-ROUND RAM SWEEP ---
     // Now that all bets are resolved and safely saved to the DB, sweep the RAM for offline users
@@ -349,7 +521,7 @@ io.on('connection', async (socket) => {
 
     // --- REAL-TIME TELEMETRY ---
     // Instantly tell everyone the new exact number of connected devices
-    io.emit('online_count', io.engine.clientsCount);
+    io.emit('online_count', io.engine.clientsCount + fakeOnlineCount);
 
     // Respond to Ping Requests instantly with the exact timestamp received
     socket.on('ping_req', (timestamp) => {
@@ -1022,7 +1194,7 @@ io.on('connection', async (socket) => {
 
         socket.on('disconnect', () => { 
             // Instantly tell everyone a device disconnected
-            io.emit('online_count', io.engine.clientsCount);
+            io.emit('online_count', io.engine.clientsCount + fakeOnlineCount);
 
             // Check if the user has any other tabs/devices open...
             const connectedTabs = io.sockets.adapter.rooms.get(userId)?.size || 0;

@@ -282,10 +282,26 @@
         }
 
         /* Total Pot & Round Stats Bar */
+        /* Total Pot & Round Stats Bar */
+        /* Total Pot & Round Stats Bar */
         .round-stats-bar {
-            display: flex; justify-content: space-between; align-items: center;
-            background: rgba(0, 166, 26, 0.05); border: none;
-            padding: 12px 15px; border-radius: 6px; margin-bottom: 8px;
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px 10px;
+
+            /* Restored the green background */
+            background: rgba(0, 166, 26, 0.05); 
+            border-top: 1px solid rgba(57, 255, 20, 0.1);
+            border-bottom: 1px solid rgba(57, 255, 20, 0.1);
+            border-left: none;
+            border-right: none;
+            border-radius: 0; /* Removes the rounded corners so it's flush */
+
+            /* THE TRICK: Pulls the background edge-to-edge past the container's padding */
+            margin: -20px -15px 10px -15px; 
+
+            /* Pushes the text back inward so it perfectly aligns with the table headers */
+            padding: 15px 20px; 
         }
         .rs-label { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); margin-bottom: 6px; }
         .rs-val { font-family: 'VT323', monospace; font-size: 24px; color: #fff; line-height: 1; }
@@ -302,11 +318,19 @@
         /* Individual Player Cards */
         .live-row { 
             display: flex; justify-content: space-between; align-items: center;
-            background: rgba(17, 18, 29, 0.6); border: none;
+            background: #11121d; border: 1px solid transparent; /* Added transparent border base */
             padding: 10px 15px; border-radius: 6px; 
-            font-family: 'Inter', sans-serif; font-size: 20px; color: #fff;
-            backdrop-filter: blur(4px);
+            font-family: 'VT323', monospace; font-size: 20px; color: #fff;
+            animation: fadeIn 0.3s;
         }
+
+        /* --- ADD THIS HIGHLIGHT CLASS --- */
+        .live-row.my-bet-row {
+            border-color: var(--cyan);
+            background: rgba(0, 243, 255, 0.08);
+            box-shadow: none;
+        }
+        /* -------------------------------- */
 
         .col-user-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 1px; }
 
@@ -798,13 +822,25 @@
             <!-- INTEGRATED LIVE BETS & POT STATS -->
             <div id="game-live-bets">
                 <div class="round-stats-bar">
+                    <!-- Top Left: Surviving Players -->
                     <div>
-                        <div class="rs-label">PLAYERS</div>
-                        <div class="rs-val" id="pot-players">0</div>
+                        <div class="rs-label">PLAYING / TOTAL</div>
+                        <div class="rs-val" id="pot-players">0 / 0</div>
                     </div>
+                    <!-- Top Right: Total Stake -->
                     <div style="text-align: right;">
-                        <div class="rs-label">TOTAL POT</div>
+                        <div class="rs-label">TOTAL STAKE</div>
                         <div class="rs-val rs-pot" id="pot-total">$0.00</div>
+                    </div>
+                    <!-- Bottom Left: Total Payouts -->
+                    <div>
+                        <div class="rs-label">TOTAL PAID OUT</div>
+                        <div class="rs-val" id="pot-paid" style="color: var(--cyan); text-shadow: 0 0 8px rgba(0, 243, 255, 0.4);">$0.00</div>
+                    </div>
+                    <!-- Bottom Right: Top Winner -->
+                    <div style="text-align: right;">
+                        <div class="rs-label">TOP WINNER (PROFIT)</div>
+                        <div class="rs-val" id="pot-top" style="color: var(--yellow); text-shadow: 0 0 8px rgba(255, 213, 0, 0.4);">+$0.00</div>
                     </div>
                 </div>
 
@@ -815,6 +851,13 @@
                     <div class="col-profit">PROFIT($)</div>
                 </div>
                 <div id="live-table-body"></div>
+                <!-- ADD THIS NEW BUTTON CONTAINER -->
+                <div id="show-more-container" style="display: none; text-align: center; margin-top: 10px;">
+                    <button id="show-more-btn" onclick="toggleLiveTable()" style="background: transparent; border: 1px dashed var(--cyan); color: var(--cyan); font-family: 'Press Start 2P', monospace; font-size: 8px; padding: 10px 20px; border-radius: 4px; cursor: pointer; transition: all 0.2s; width: 100%;">
+                        SHOW ALL BETS
+                    </button>
+                </div>
+                <!-- ------------------------------- -->
             </div> <!-- END LIVE BETS -->
 
         </div> <!-- END VIEW-GAME TAB -->
@@ -1260,6 +1303,16 @@
         let myPlayer = null;
         let myBalance = 0;
         let roundBets = {}; // Tracks live players
+
+        // --- ADD THESE LINES ---
+        let showingAllBets = false;
+        window.toggleLiveTable = () => {
+            playSfx('click');
+            showingAllBets = !showingAllBets;
+            document.getElementById('show-more-btn').innerText = showingAllBets ? 'SHOW TOP 10' : 'SHOW ALL BETS';
+            renderLiveTable();
+        };
+        // -----------------------
         let currentHash = ''; // <-- ADD THIS LINE!
         let currentSeed = '';
 
@@ -1495,7 +1548,8 @@
             });
 
             // --- 3. DYNAMIC CELESTIAL BODIES (Planets/Galaxies) ---
-            if (state === 'PLAYING' && prog > 0.5 && Math.random() < 0.015 * speedMult) {
+            // Space is vast. Max 2 planets on screen at once, and they spawn much less frequently.
+            if (state === 'PLAYING' && prog > 0.5 && celestials.length < 2 && Math.random() < 0.003) {
                 // Spawn a new retro planet
                 celestials.push({
                     x: Math.random() * cw,
@@ -1743,41 +1797,64 @@
             }
         }
 
-        // --- SURGICAL DOM RENDERER & CSS AUTO-SORTING ---
         function updateLivePotStats() {
-            let totalPotUsd = 0;
-            let playersCount = 0;
+            let totalStakeUsd = 0;
+            let totalPlayers = 0;
+            let playersAlive = 0;
+            let totalPaidOut = 0;
+            let topWin = 0;
+
             Object.values(roundBets).forEach(b => {
-                totalPotUsd += (b.amount || b.amountUsd || 0);
-                playersCount++;
+                let betAmount = b.amount || b.amountUsd || 0;
+                totalStakeUsd += betAmount;
+                totalPlayers++;
+
+                if (b.cashedOut) {
+                    let winAmount = betAmount * b.cashoutMult;
+                    let profit = winAmount - betAmount;
+                    totalPaidOut += winAmount;
+                    if (profit > topWin) topWin = profit; // Track biggest winner
+                } else {
+                    playersAlive++;
+                }
             });
+
             const potTotalEl = document.getElementById('pot-total');
             const potPlayersEl = document.getElementById('pot-players');
-            if (potTotalEl) potTotalEl.innerText = `$${totalPotUsd.toFixed(2)}`;
-            if (potPlayersEl) potPlayersEl.innerText = playersCount;
+            const potPaidEl = document.getElementById('pot-paid');
+            const potTopEl = document.getElementById('pot-top');
+
+            if (potTotalEl) potTotalEl.innerText = `$${totalStakeUsd.toFixed(2)}`;
+            if (potPlayersEl) potPlayersEl.innerText = `${playersAlive} / ${totalPlayers}`;
+            if (potPaidEl) potPaidEl.innerText = `$${totalPaidOut.toFixed(2)}`;
+            if (potTopEl) potTopEl.innerText = `+$${topWin.toFixed(2)}`;
         }
 
-        function addOrUpdateBetRow(id, b) {
+        function addOrUpdateBetRow(id, b, forceAppend = false) {
             let row = document.getElementById('bet-row-' + id);
-            let betAmount = b.amount || b.amountUsd || 0;
 
-            // CSS Flexbox Magic: Negative order makes higher bets naturally float to the top!
-            let flexOrder = Math.floor(-betAmount * 100); 
+            // SECURITY/LAG FIX: If the row isn't in the DOM and we aren't rebuilding the table, ignore it!
+            if (!row && !forceAppend) return;
+
+            let betAmount = b.amount || b.amountUsd || 0;
+            let isMe = (myPlayer && id === myPlayer.id);
+            let flexOrder = isMe ? -999999999 : Math.floor(-betAmount * 100); 
 
             let isCash = b.cashedOut;
             let multHtml = isCash ? `<span class="mult-badge">${b.cashoutMult.toFixed(2)}x</span>` : '-';
             let profStr = isCash ? '+$'+(betAmount * b.cashoutMult - betAmount).toFixed(2) : '-';
             const vip = getVipInfo(b.wagered);
 
+            let rowClasses = `live-row ${isCash ? 'cashed' : (state === 'CRASHED' ? 'crashed' : '')} ${isMe ? 'my-bet-row' : ''}`;
+
             if (row) {
-                // Surgically update existing row WITHOUT deleting it
-                row.className = `live-row ${isCash ? 'cashed' : (state === 'CRASHED' ? 'crashed' : '')}`;
+                row.className = rowClasses;
+                row.style.order = flexOrder;
                 row.querySelector('.col-mult').innerHTML = multHtml;
                 row.querySelector('.col-profit').innerHTML = profStr;
-            } else {
-                // Insert a brand new row smoothly
+            } else if (forceAppend) {
                 let htmlStr = `
-                    <div id="bet-row-${id}" class="live-row ${isCash ? 'cashed' : (state === 'CRASHED' ? 'crashed' : '')}" style="order: ${flexOrder};">
+                    <div id="bet-row-${id}" class="${rowClasses}" style="order: ${flexOrder};">
                         <div class="col-user">
                             ${vip.badge} <span class="col-user-name" style="color:${vip.color}">${b.username.substring(0,8)}</span>
                         </div>
@@ -1793,9 +1870,37 @@
         // Only runs once per round to reset the table cleanly
         function renderLiveTable() {
             ui.liveBody.innerHTML = ''; 
-            Object.entries(roundBets).forEach(([id, b]) => {
-                addOrUpdateBetRow(id, b);
+
+            // 1. Convert to array and sort by bet amount descending
+            let betsArray = Object.entries(roundBets).map(([id, b]) => ({ id, ...b }));
+            betsArray.sort((a, b) => (b.amount || b.amountUsd || 0) - (a.amount || a.amountUsd || 0));
+
+            let renderList = betsArray;
+
+            // 2. Slice to top 10 if collapsed
+            if (!showingAllBets) {
+                renderList = betsArray.slice(0, 10);
+
+                // 3. Guarantee YOUR bet is always shown, even if you aren't in the top 10
+                if (myPlayer && roundBets[myPlayer.id]) {
+                    const myBetInTop10 = renderList.find(b => b.id === myPlayer.id);
+                    if (!myBetInTop10) {
+                        renderList.push({ id: myPlayer.id, ...roundBets[myPlayer.id] });
+                    }
+                }
+            }
+
+            // 4. Render only the allowed list
+            renderList.forEach(b => {
+                addOrUpdateBetRow(b.id, b, true); // forceAppend = true
             });
+
+            // 5. Show/Hide the "Show More" button dynamically
+            const btnContainer = document.getElementById('show-more-container');
+            if (btnContainer) {
+                btnContainer.style.display = betsArray.length > 10 ? 'block' : 'none';
+            }
+
             updateLivePotStats();
         }
 
@@ -1961,8 +2066,8 @@
             const h = parseInt(seed.substring(0, 8), 16);
             const r = h / (Math.pow(2, 32) - 1);
             let crash = 1.00;
-            if (r > 0.01) { // 1% house edge
-                const res = 0.99 / (1 - r);
+            if (r > 0.05) { // 5% house edge
+                const res = 0.95 / (1 - r); // <-- Changed 0.99 to 0.95
                 crash = Math.max(1.00, Math.min(res, 1000000.00));
             }
 
@@ -2321,6 +2426,8 @@
                     if (row) row.classList.add('crashed');
                 }
             }); // Updates styling for crashed
+            // ADD THIS LINE to immediately turn "Players Alive" to 0
+            updateLivePotStats(); 
         });
 
         socket.on('bet_accepted', (d) => {
@@ -2355,16 +2462,19 @@
 
         socket.on('player_bet', (d) => {
             roundBets[d.id] = { username: d.username, amount: d.amount, cashedOut: false, wagered: d.wagered }; 
-            addOrUpdateBetRow(d.id, roundBets[d.id]);
-            updateLivePotStats(); // Only update pot when new bets arrive
+            // LAG FIX: Use the batch renderer instead of updating immediately
+            scheduleRender(); 
         });
 
         socket.on('player_cashed_out', (d) => {
             if(roundBets[d.id]) {
                 roundBets[d.id].cashedOut = true;
                 roundBets[d.id].cashoutMult = parseFloat(d.multiplier);
-                addOrUpdateBetRow(d.id, roundBets[d.id]);
-                // No need to update the Pot Stats here, saving even more CPU!
+
+                // Will only update the row IF it is currently visible in your Top 10
+                addOrUpdateBetRow(d.id, roundBets[d.id], false);
+
+                updateLivePotStats(); 
             }
         });
         // --- Connection Drop Fail-Safe ---

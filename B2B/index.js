@@ -89,7 +89,7 @@ app.get('/auth', (req, res) => {
 const GAME_STATE = { WAITING: 'WAITING', PLAYING: 'PLAYING', CRASHED: 'CRASHED' };
 const WAIT_TIME_MS = 6000;
 const GROWTH_RATE = 0.00006; 
-const HOUSE_EDGE = 0.01; 
+const HOUSE_EDGE = 0.05;
 const MAX_PAYOUT_USD = 5000.00; // NEW: Max profit per round
 
 
@@ -111,6 +111,45 @@ let activeBets = {};
 const pendingCommissions = {};
 
 // --- BOT SYSTEM (FAKE USERS & ACTIVITY) ---
+// --- BOT SYSTEM (FAKE USERS & ACTIVITY) ---
+
+const botAdjectives = ["Crypto", "Lucky", "Moon", "Degen", "Diamond", "Based", "Neon", "Golden", "Alpha", "Satoshi", "Hyper", "Toxic", "Swift", "Quiet", "Magic", "Dark", "Crazy"];
+const botNouns = ["Whale", "Ape", "King", "God", "Bull", "Chad", "Hands", "Roller", "Shark", "Ninja", "Trader", "Sniper", "Baron", "Lord", "Fox", "Wolf", "Bear"];
+const botNames = ["Alex", "Mike", "Sarah", "David", "Chris", "John", "Tom", "Sam", "Jake", "Kevin", "Leo", "Max", "Mia", "Zack", "Eli", "Ruby", "Josh"];
+
+function generateRealisticBotName() {
+    const rand = Math.random();
+    let name = "";
+
+    if (rand < 0.35) {
+        // 35% Chance: Crypto Slang (e.g., CryptoWhale, DegenApe)
+        name = botAdjectives[Math.floor(Math.random() * botAdjectives.length)] + botNouns[Math.floor(Math.random() * botNouns.length)];
+    } else if (rand < 0.65) {
+        // 30% Chance: Normal human names (e.g., Alex, Sarah)
+        name = botNames[Math.floor(Math.random() * botNames.length)];
+    } else if (rand < 0.85) {
+        // 20% Chance: Just a random cool word
+        name = botAdjectives[Math.floor(Math.random() * botAdjectives.length)];
+    } else {
+        // 15% Chance: Lazy burner accounts (e.g., user84932)
+        return "user" + Math.floor(10000 + Math.random() * 90000);
+    }
+
+    // 60% chance to append numbers at the end (like real people do)
+    if (Math.random() < 0.6) {
+        const numberTypes = [
+            Math.floor(Math.random() * 99), // 1-99
+            Math.floor(1980 + Math.random() * 25), // Birth years (1980-2005)
+            69, 420, 777, 88, 999 // Meme/Lucky numbers
+        ];
+        name += numberTypes[Math.floor(Math.random() * numberTypes.length)];
+    }
+
+    // 20% chance for the user to have typed their name entirely in lowercase
+    if (Math.random() < 0.2) name = name.toLowerCase();
+
+    return name;
+}
 let fakeOnlineCount = 250;
 
 // Fluctuate online users randomly every 5 seconds
@@ -126,27 +165,37 @@ function placeBotBet(index) {
     if (currentState !== GAME_STATE.WAITING) return; // Prevent betting if game already started
 
     const botId = 'BOT_' + index + '_' + Date.now();
-    const hex = crypto.randomBytes(2).toString('hex').toUpperCase();
-    const username = 'PLYR_' + hex;
+    const username = generateRealisticBotName();
 
-    // Humanized Bet Amounts (Humans love round numbers)
+    // --- HIGHLY REALISTIC HUMAN BET AMOUNTS ---
     let amount = 0;
     const rand = Math.random();
-    if (rand < 0.45) {
-        // 45% chance of standard small round numbers
-        const smallTiers = [1, 2, 3, 5, 10];
-        amount = smallTiers[Math.floor(Math.random() * smallTiers.length)];
-    } else if (rand < 0.75) {
-        // 30% chance of medium round numbers
-        const medTiers = [15, 20, 25, 50, 75, 100];
-        amount = medTiers[Math.floor(Math.random() * medTiers.length)];
+
+    if (rand < 0.20) {
+        // 20% Chance: Micro-bets / Dust testing ($1.00 - $19.99)
+        // People testing the waters or betting leftovers
+        amount = parseFloat((Math.random() * 19 + 1).toFixed(2));
+
+    } else if (rand < 0.60) {
+        // 40% Chance: Standard "Round" Numbers ($20 - $200)
+        // Humans naturally gravitate to these specific typed numbers
+        const coreRounds = [20, 25, 30, 40, 50, 75, 100, 125, 150, 200];
+        amount = coreRounds[Math.floor(Math.random() * coreRounds.length)];
+
     } else if (rand < 0.90) {
-        // 15% chance of completely random decimal numbers (to look organic)
-        amount = parseFloat(((Math.random() * 49) + 1).toFixed(2));
+        // 30% Chance: "Messy" organic numbers in the sweet spot ($20 - $200)
+        // Looks like real players hitting "MAX" or typing randomly (e.g., $43.50, $112.75)
+        amount = parseFloat((Math.random() * 180 + 20).toFixed(2));
+
+    } else if (rand < 0.98) {
+        // 8% Chance: Semi-High Rollers ($250 - $450)
+        const upperTiers = [250, 300, 350, 400, 450];
+        amount = upperTiers[Math.floor(Math.random() * upperTiers.length)];
+
     } else {
-        // 10% High Rollers
-        const highTiers = [150, 200, 250, 500, 1000, 1500];
-        amount = highTiers[Math.floor(Math.random() * highTiers.length)];
+        // 2% Chance: True Whales (Very rarely drops a 500+)
+        const whales = [500, 600, 777, 1000];
+        amount = whales[Math.floor(Math.random() * whales.length)];
     }
 
     // Random wagered amount to give them varying VIP badges
@@ -208,8 +257,7 @@ function triggerBotChat(type) {
     const text = phrases[Math.floor(Math.random() * phrases.length)];
 
     // Generate a random bot player profile
-    const hex = crypto.randomBytes(2).toString('hex').toUpperCase();
-    const username = 'PLYR_' + hex;
+    const username = generateRealisticBotName();
     const wagered = Math.random() * 20000; // Gives them random Bronze/Silver/Gold/Diamond badges
 
     const msgData = {
@@ -271,7 +319,7 @@ function generateCrashPoint(seed) {
 
     if (r <= HOUSE_EDGE) return 1.00;
 
-    const result = 0.99 / (1 - r);
+    const result = 0.95 / (1 - r); // <-- Changed 0.99 to 0.95
     return Math.max(1.00, Math.min(result, 1000000.00));
 }
 

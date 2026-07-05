@@ -1482,7 +1482,9 @@
 
                 ui.mult.innerText = currentMult.toFixed(2) + 'x';
                 ui.mult.style.color = currentMult > 2 ? 'var(--green)' : 'var(--text-main)';
-                ui.mult.style.textShadow = currentMult > 5 ? '0 0 20px var(--green)' : '4px 4px 0px rgba(0,0,0,0.8)';
+
+                // KEEP the flat retro shadow at all times (no glow)
+                ui.mult.style.textShadow = '4px 4px 0px rgba(0,0,0,0.8)';
 
                 if (myBet && !myBet.cashedOut) {
                     ui.btnMain.innerText = 'CASH OUT';

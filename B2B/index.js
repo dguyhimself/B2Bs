@@ -171,30 +171,35 @@ function placeBotBet(index) {
     let amount = 0;
     const rand = Math.random();
 
-    if (rand < 0.20) {
-        // 20% Chance: Micro-bets / Dust testing ($1.00 - $19.99)
-        // People testing the waters or betting leftovers
-        amount = parseFloat((Math.random() * 19 + 1).toFixed(2));
+    if (rand < 0.35) {
+        // 35% Chance: Micro-bets ($1.00 - $15.00)
+        // Lots of players doing very small test bets
+        amount = parseFloat((Math.random() * 14 + 1).toFixed(2));
 
-    } else if (rand < 0.60) {
-        // 40% Chance: Standard "Round" Numbers ($20 - $200)
-        // Humans naturally gravitate to these specific typed numbers
-        const coreRounds = [20, 25, 30, 40, 50, 75, 100, 125, 150, 200];
+    } else if (rand < 0.70) {
+        // 35% Chance: Standard Small Round Numbers ($10 - $50)
+        // The absolute most common human inputs
+        const coreRounds = [10, 15, 20, 25, 30, 40, 50];
         amount = coreRounds[Math.floor(Math.random() * coreRounds.length)];
 
-    } else if (rand < 0.90) {
-        // 30% Chance: "Messy" organic numbers in the sweet spot ($20 - $200)
-        // Looks like real players hitting "MAX" or typing randomly (e.g., $43.50, $112.75)
-        amount = parseFloat((Math.random() * 180 + 20).toFixed(2));
+    } else if (rand < 0.92) {
+        // 22% Chance: Organic messy numbers ($15.00 - $60.00)
+        // Looks like real players hitting "Half" or betting random balances
+        amount = parseFloat((Math.random() * 45 + 15).toFixed(2));
 
-    } else if (rand < 0.98) {
-        // 8% Chance: Semi-High Rollers ($250 - $450)
-        const upperTiers = [250, 300, 350, 400, 450];
+    } else if (rand < 0.985) {
+        // 6.5% Chance: Medium-High Rollers ($75 - $150)
+        const upperTiers = [75, 100, 120, 150];
         amount = upperTiers[Math.floor(Math.random() * upperTiers.length)];
 
+    } else if (rand < 0.998) {
+        // 1.3% Chance: High Rollers ($200 - $300)
+        const highTiers = [200, 250, 300];
+        amount = highTiers[Math.floor(Math.random() * highTiers.length)];
+
     } else {
-        // 2% Chance: True Whales (Very rarely drops a 500+)
-        const whales = [500, 600, 777, 1000];
+        // 0.2% Chance: True Whales (Extremely rare 500, 777, or 1000)
+        const whales = [500, 777, 1000];
         amount = whales[Math.floor(Math.random() * whales.length)];
     }
 

@@ -400,7 +400,7 @@
         const urlRef = urlParams.get('ref');
         if (urlRef) {
             document.getElementById('reg-ref').value = urlRef.toUpperCase();
-            switchAuthMode('register');
+            switchAuthMode('register', true); // <-- Add 'true' so it switches tabs silently without crashing the Audio API!
         }
 
         // --- 8-Bit Audio Engine ---
@@ -440,8 +440,8 @@
         }
 
         // Add sounds to existing functions
-        function switchAuthMode(mode) {
-            playSfx('click');
+        function switchAuthMode(mode, silent = false) {
+            if (!silent) playSfx('click'); // <-- Only play the sound if it's an actual click
             document.getElementById('tab-login').classList.toggle('active', mode === 'login');
             document.getElementById('tab-register').classList.toggle('active', mode === 'register');
 

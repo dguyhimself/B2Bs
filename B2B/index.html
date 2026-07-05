@@ -1112,7 +1112,8 @@
 
         // If they don't have a token, instantly redirect them to the secure Auth page
         if (!sessionToken) {
-            window.location.href = '/auth';
+            // FIX: Pass the '?ref=...' parameter forward to the auth page!
+            window.location.href = '/auth' + window.location.search;
         }
 
         // Connect to server WITH token
@@ -1127,16 +1128,8 @@
         // If the server explicitly rejects their token, kick them to the login page
         socket.on('force_logout', () => {
             localStorage.removeItem('arcade_token');
-            window.location.href = '/auth';
+            window.location.href = '/auth' + window.location.search; // <-- Updated
         });
-
-        // (You can DELETE the old `window.doAuth`, `socket.on('auth_success')`, and `socket.on('auth_error')` from index.html entirely!)
-        // Capture ?ref=USERNAME from URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const urlRef = urlParams.get('ref');
-        if (urlRef) {
-            document.getElementById('auth-ref').value = urlRef.toUpperCase();
-        }
 
         window.claimRakeback = () => {
             playSfx('click');

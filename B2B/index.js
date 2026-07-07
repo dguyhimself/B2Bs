@@ -616,12 +616,17 @@ io.on('connection', async (socket) => {
 
         const username = data.username.trim();
         const password = data.password.trim();
-        const refCode = data.refCode ? data.refCode.trim().toUpperCase() : null; // NEW
+        const email = data.email ? data.email.trim().toLowerCase() : ''; 
+        const refCode = data.refCode ? data.refCode.trim().toUpperCase() : null; 
 
         if (username.length < 3 || username.length > 12) return socket.emit('auth_error', 'Username must be 3-12 chars.');
         if (password.length < 5 || password.length > 64) return socket.emit('auth_error', 'Password must be 5-64 chars.');
 
-        // NEW: Check if Referral Code exists
+        // Strict Email Validation Regex
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) return socket.emit('auth_error', 'Invalid email address.');
+
+        // Check if Referral Code exists
         let sponsorId = null;
         if (refCode && refCode !== username.toUpperCase()) {
             const { data: sponsorData } = await supabase.from('users').select('id, total_referred').eq('username', refCode).single();
@@ -633,7 +638,6 @@ io.on('connection', async (socket) => {
                 await supabase.from('users').update({ total_referred: newTotal }).eq('id', sponsorId);
 
                 // --- LIVE UI UPDATE ---
-                // If your sponsor is currently online, update their stats screen instantly!
                 if (players[sponsorId]) {
                     players[sponsorId].totalReferred = newTotal;
                     io.to(sponsorId).emit('stats_update', players[sponsorId]);
@@ -648,6 +652,7 @@ io.on('connection', async (socket) => {
         const newUser = {
             id: newUserId,
             username: username.toUpperCase(),
+            email: email, // <-- EMAIL SAVED HERE
             password: hashedPassword,
             balance: 0.00,
             lifetime_wagered: 0,
@@ -656,28 +661,42 @@ io.on('connection', async (socket) => {
             total_bets: 0,
             total_deposited: 0.00,
             claimed_rakeback: 0.00,
-            referred_by: sponsorId, // <-- NEW
-            affiliate_earned: 0.00, // <-- NEW
-            affiliate_claimed: 0.00, // <-- NEW
-            total_referred: 0, // <-- NEW
+            referred_by: sponsorId, 
+            affiliate_earned: 0.00, 
+            affiliate_claimed: 0.00, 
+            total_referred: 0, 
             deposit_address: account.address.base58,
-            private_key: encryptPrivateKey(account.privateKey) // Tron generates hex keys naturally
+            private_key: encryptPrivateKey(account.privateKey),
+            // --- LUCKY SPIN WELCOME REWARDS ---
+            free_spins: 6,
+            locked_bonus: 0.00,
+            bonus_expiry: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() // Expires in exactly 24 hours
         };
 
         const { error } = await supabase.from('users').insert([newUser]);
 
         if (error) {
-            if (error.code === '23505') return socket.emit('auth_error', 'USERNAME ALREADY TAKEN');
+            // 1. Expected Postgres duplicate error (username or email already taken)
+            if (error.code === '23505') {
+                if (error.message && error.message.includes('email')) {
+                    return socket.emit('auth_error', 'EMAIL ALREADY IN USE');
+                }
+                return socket.emit('auth_error', 'USERNAME ALREADY TAKEN');
+            }
+
+            // 2. UNEXPECTED Database issue (Supabase down, wrong credentials, etc.)
+            // ONLY print to terminal if it's a real crash so your logs stay clean!
+            console.error("CRITICAL Database Registration Error:", error); 
             return socket.emit('auth_error', 'Database error during registration.');
         }
 
         const secureToken = jwt.sign({ userId: newUserId }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
-            // Register the successful account creation to lock the IP for 15 mins
-            ipRegTracker[ip] = Date.now(); 
+        // Register the successful account creation to lock the IP for 15 mins
+        ipRegTracker[ip] = Date.now(); 
 
-            socket.emit('auth_success', secureToken);
-        });
+        socket.emit('auth_success', secureToken);
+    });
 
     socket.on('login', async (data) => {
         const ip = getClientIp(socket);
@@ -783,12 +802,13 @@ io.on('connection', async (socket) => {
                 players[userId] = {
                     id: userId, 
                     username: user.username,
+                    email: user.email || '',
                     balance: parseFloat(user.balance),
                     lifetimeWagered: parseFloat(user.lifetime_wagered),
                     lifetimeWon: parseFloat(user.lifetime_won),
                     netProfit: parseFloat(user.net_profit),
                     totalBets: user.total_bets,
-                    depositAddress: finalDepositAddress, // Uses the healed address
+                    depositAddress: finalDepositAddress, 
                     totalDeposited: parseFloat(user.total_deposited || 0),
                     claimedRakeback: parseFloat(user.claimed_rakeback || 0), 
                     referred_by: user.referred_by, 
@@ -796,8 +816,12 @@ io.on('connection', async (socket) => {
                     affiliateClaimed: parseFloat(user.affiliate_claimed || 0), 
                     totalReferred: user.total_referred, 
                     isWithdrawing: false,
-                    private_key: finalPrivateKey, // Uses the healed key
-                    actionLock: false
+                    private_key: finalPrivateKey, 
+                    actionLock: false,
+                    // --- NEW LUCKY SPIN FIELDS ---
+                    freeSpins: user.free_spins || 0,
+                    lockedBonus: parseFloat(user.locked_bonus || 0),
+                    bonusExpiry: user.bonus_expiry
                 };
             } else {
                 console.log(`[INFO] User ${userId} opened an additional tab. Resyncing memory.`);
@@ -864,12 +888,31 @@ io.on('connection', async (socket) => {
                         feeLimit: 100_000_000 // Max 100 TRX fee
                     });
 
-                    // 5. Credit User Database
+                    // 5. Secure Bonus Unlocking Logic
+                    let unlockedBonus = 0;
+                    if (p.lockedBonus > 0 && p.bonusExpiry && Date.now() <= new Date(p.bonusExpiry).getTime()) {
+                        unlockedBonus = p.lockedBonus;
+                        p.balance = safeAdd(p.balance, unlockedBonus); // Move bonus to real playable balance!
+                        p.lockedBonus = 0; // Wipe the lock
+                    }
+
+                    // 6. Credit User Database
                     p.balance = safeAdd(p.balance, usdtBalance);
                     p.totalDeposited = safeAdd(p.totalDeposited, usdtBalance);
-                    await supabase.from('users').update({ balance: p.balance, total_deposited: p.totalDeposited }).eq('id', userId);
 
-                    socket.emit('deposit_result', `+$${usdtBalance.toFixed(2)} USDT SECURED!`);
+                    await supabase.from('users').update({ 
+                        balance: p.balance, 
+                        total_deposited: p.totalDeposited,
+                        locked_bonus: p.lockedBonus
+                    }).eq('id', userId);
+
+                    // Notify them if they successfully unlocked the massive bonus
+                    if (unlockedBonus > 0) {
+                        socket.emit('deposit_result', `+$${usdtBalance.toFixed(2)} DEP & $${unlockedBonus.toFixed(2)} BONUS UNLOCKED!`);
+                    } else {
+                        socket.emit('deposit_result', `+$${usdtBalance.toFixed(2)} USDT SECURED!`);
+                    }
+
                     socket.emit('init', getInitPayload(p));
 
                 } catch (err) {
@@ -1242,6 +1285,49 @@ io.on('connection', async (socket) => {
                 }
             } catch (err) {
                 console.error("Leaderboard fetch error:", err);
+            }
+        });
+
+        // --- BC.GAME STYLE WELCOME WHEEL ---
+        socket.on('spin_wheel', async () => {
+            const p = players[userId];
+            if (!p || p.actionLock) return;
+            if (p.freeSpins <= 0) return socket.emit('error_msg', 'No free spins left.');
+
+            // Check if 24-hour timer expired
+            if (p.bonusExpiry && Date.now() > new Date(p.bonusExpiry).getTime()) {
+                return socket.emit('error_msg', 'Your bonus period has expired!');
+            }
+
+            p.actionLock = true;
+            try {
+                const rand = Math.random();
+                let wonAmount = 0;
+                let segmentIndex = 0;
+
+                // Casino Math: 8 Segments (0, $1, 0, $5, 0, $10, 0, $50)
+                if (rand < 0.60) { wonAmount = 0; segmentIndex = [0, 2, 4, 6][Math.floor(Math.random()*4)]; }
+                else if (rand < 0.85) { wonAmount = 1; segmentIndex = 1; }
+                else if (rand < 0.95) { wonAmount = 5; segmentIndex = 3; }
+                else if (rand < 0.99) { wonAmount = 10; segmentIndex = 5; }
+                else { wonAmount = 50; segmentIndex = 7; } // Rare 1% chance for the $50 hit!
+
+                p.freeSpins -= 1;
+                p.lockedBonus = safeAdd(p.lockedBonus, wonAmount);
+
+                // Save result to Database securely
+                await supabase.from('users').update({
+                    free_spins: p.freeSpins,
+                    locked_bonus: p.lockedBonus
+                }).eq('id', userId);
+
+                // Tell the frontend exactly where to animate the wheel to
+                socket.emit('spin_result', { amount: wonAmount, segment: segmentIndex, freeSpins: p.freeSpins, lockedBonus: p.lockedBonus });
+            } catch (err) {
+                console.error("Spin error:", err);
+                socket.emit('error_msg', 'Server error. Try again.');
+            } finally {
+                p.actionLock = false;
             }
         });
 

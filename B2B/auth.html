@@ -80,12 +80,24 @@
         }
 
         /* Segmented Tabs */
-        .auth-tabs { display: flex; background: rgba(6, 6, 6, 0.6); border: none; border-radius: 6px; padding: 4px; flex-shrink: 0; }
+        .auth-tabs { display: flex; background: #07070b; border: 1px solid #1a1c29; border-radius: 6px; padding: 4px; flex-shrink: 0; }
         .auth-tab { flex: 1; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 8px; padding: 12px 0; color: var(--text-dim); cursor: pointer; border-radius: 4px; transition: all 0.2s ease; letter-spacing: 1px; }
         .auth-tab.active { background: #23253b; color: var(--cyan); box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
 
         .auth-form { display: none; flex-direction: column; gap: 15px; animation: fadeIn 0.3s ease; }
         .auth-form.active { display: flex; }
+
+        /* --- SCROLLABLE INPUTS AREA --- */
+        .form-inputs-scroll {
+            display: flex; flex-direction: column; gap: 12px; /* <-- Tighter gap for a cleaner look */
+            overflow-y: auto; overflow-x: hidden;
+            max-height: 33vh; /* <-- Reduced from 38vh to give the rocket and footer breathing room! */
+            padding-right: 5px; /* Prevents scrollbar from overlapping inputs */
+            margin-right: -5px; /* Keeps visual alignment perfect */
+        }
+        /* Custom sleek scrollbar for the inputs */
+        .form-inputs-scroll::-webkit-scrollbar { width: 4px; }
+        .form-inputs-scroll::-webkit-scrollbar-thumb { background: #23253b; border-radius: 4px; }
 
         /* Advanced Input Groups */
         .form-group { display: flex; flex-direction: column; gap: 6px; }
@@ -282,28 +294,33 @@
                 </div>
 
                 <!-- LOGIN FORM -->
+                <!-- LOGIN FORM -->
                 <div id="form-login" class="auth-form active">
-                    <div class="form-group">
-                        <label class="input-label">USERNAME</label>
-                        <div class="input-wrapper">
-                            <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
-                            <input type="text" id="login-user" class="auth-input" placeholder="Enter username" maxlength="12" autocomplete="off">
-                        </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label class="input-label">PASSWORD</label>
-                        <div class="input-wrapper">
-                            <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
-                            <input type="password" id="login-pass" class="auth-input" placeholder="Enter password">
-                            <div class="pass-toggle" onclick="togglePassword('login-pass', this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+                    <!-- NEW SCROLL WRAPPER -->
+                    <div class="form-inputs-scroll">
+                        <div class="form-group">
+                            <label class="input-label">USERNAME</label>
+                            <div class="input-wrapper">
+                                <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
+                                <input type="text" id="login-user" class="auth-input" placeholder="Enter username" maxlength="12" autocomplete="off">
+                            </div>
                         </div>
-                        <!-- Changed margin-top to 4px to give it clean breathing room -->
-                        <div style="display: flex; justify-content: flex-end; margin-top: 4px; padding-right: 4px;">
-                            <span class="forgot-pass-link" onclick="forgotPassword()">FORGOT PASSWORD?</span>
-                        </div>
-                    </div>
 
+                        <div class="form-group">
+                            <label class="input-label">PASSWORD</label>
+                            <div class="input-wrapper">
+                                <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+                                <input type="password" id="login-pass" class="auth-input" placeholder="Enter password">
+                                <div class="pass-toggle" onclick="togglePassword('login-pass', this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+                            </div>
+                            <div style="display: flex; justify-content: flex-end; margin-top: 4px; padding-right: 4px;">
+                                <span class="forgot-pass-link" onclick="forgotPassword()">FORGOT PASSWORD?</span>
+                            </div>
+                        </div>
+                    </div> <!-- END SCROLL WRAPPER -->
+
+                    <!-- Submit button stays pinned outside the scroll! -->
                     <button class="btn-submit btn-submit-green" onclick="submitAuth('login')">
                         <span>SECURE LOGIN</span>
                         <span class="btn-subtext">Access Vault</span>
@@ -311,33 +328,57 @@
                 </div>
 
                 <!-- REGISTER FORM -->
+                <!-- REGISTER FORM -->
+                <!-- REGISTER FORM -->
                 <div id="form-register" class="auth-form">
-                    <div class="form-group">
-                        <label class="input-label">CHOOSE USERNAME</label>
-                        <div class="input-wrapper">
-                            <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
-                            <input type="text" id="reg-user" class="auth-input" placeholder="3-12 Characters" maxlength="12" autocomplete="off">
-                        </div>
-                    </div>
 
-                    <div class="form-group">
-                        <label class="input-label">CREATE PASSWORD</label>
-                        <div class="input-wrapper">
-                            <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
-                            <input type="password" id="reg-pass" class="auth-input" placeholder="Secure Password">
-                            <div class="pass-toggle" onclick="togglePassword('reg-pass', this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+                    <!-- NEW SCROLL WRAPPER -->
+                    <div class="form-inputs-scroll">
+                        <div class="form-group">
+                            <label class="input-label">CHOOSE USERNAME</label>
+                            <div class="input-wrapper">
+                                <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
+                                <input type="text" id="reg-user" class="auth-input" placeholder="3-12 Characters" maxlength="12" autocomplete="off">
+                            </div>
                         </div>
-                        <div class="helper-text">Min 5 characters</div>
-                    </div>
 
-                    <div class="form-group">
-                        <label class="input-label">REFERRAL CODE</label>
-                        <div class="input-wrapper">
-                            <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
-                            <input type="text" id="reg-ref" class="auth-input" placeholder="Optional" maxlength="12" autocomplete="off">
+                        <div class="form-group">
+                            <label class="input-label">EMAIL ADDRESS</label>
+                            <div class="input-wrapper">
+                                <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg></div>
+                                <input type="email" id="reg-email" class="auth-input" placeholder="Needed for withdrawals" autocomplete="email">
+                            </div>
                         </div>
-                    </div>
 
+                        <div class="form-group">
+                            <label class="input-label">CREATE PASSWORD</label>
+                            <div class="input-wrapper">
+                                <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+                                <input type="password" id="reg-pass" class="auth-input" placeholder="Secure Password">
+                                <div class="pass-toggle" onclick="togglePassword('reg-pass', this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+                            </div>
+                            <div class="helper-text">Min 5 characters</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="input-label">CONFIRM PASSWORD</label>
+                            <div class="input-wrapper">
+                                <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></div>
+                                <input type="password" id="reg-pass-confirm" class="auth-input" placeholder="Repeat Password">
+                                <div class="pass-toggle" onclick="togglePassword('reg-pass-confirm', this)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="input-label">REFERRAL CODE</label>
+                            <div class="input-wrapper">
+                                <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg></div>
+                                <input type="text" id="reg-ref" class="auth-input" placeholder="Optional" maxlength="12" autocomplete="off">
+                            </div>
+                        </div>
+                    </div> <!-- END SCROLL WRAPPER -->
+
+                    <!-- Submit button stays pinned outside the scroll! -->
                     <button class="btn-submit" onclick="submitAuth('register')">
                         <span>CREATE ACCOUNT</span>
                         <span class="btn-subtext">Join Arcade</span>
@@ -490,26 +531,39 @@
         }
 
         window.submitAuth = (action) => {
-            let u, p, r;
+            let u, p, e, cp, r;
+
             if (action === 'login') {
                 u = document.getElementById('login-user').value.trim();
                 p = document.getElementById('login-pass').value.trim();
+
+                if(!u || !p) { playSfx('error'); return setStatus('PLEASE FILL ALL FIELDS', 'error'); }
+
             } else {
                 u = document.getElementById('reg-user').value.trim();
+                e = document.getElementById('reg-email').value.trim();
                 p = document.getElementById('reg-pass').value.trim();
+                cp = document.getElementById('reg-pass-confirm').value.trim();
                 r = document.getElementById('reg-ref').value.trim();
-            }
 
-            if(!u || !p) { playSfx('error'); return setStatus('PLEASE FILL ALL FIELDS', 'error'); }
-            if(u.length < 3) { playSfx('error'); return setStatus('USERNAME MUST BE AT LEAST 3 CHARS', 'error'); }
-            if(p.length < 5) { playSfx('error'); return setStatus('PASSWORD MUST BE AT LEAST 5 CHARS', 'error'); }
+                // Frontend validation
+                if(!u || !e || !p || !cp) { playSfx('error'); return setStatus('PLEASE FILL ALL FIELDS', 'error'); }
+                if(p !== cp) { playSfx('error'); return setStatus('PASSWORDS DO NOT MATCH', 'error'); }
+
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if(!emailRegex.test(e)) { playSfx('error'); return setStatus('INVALID EMAIL FORMAT', 'error'); }
+
+                if(u.length < 3) { playSfx('error'); return setStatus('USERNAME MUST BE AT LEAST 3 CHARS', 'error'); }
+                if(p.length < 5) { playSfx('error'); return setStatus('PASSWORD MUST BE AT LEAST 5 CHARS', 'error'); }
+            }
 
             // Trigger Loading Overlay & Sound
             playSfx('launch');
             document.getElementById('loader-msg').innerText = action === 'login' ? 'Logging in...' : 'Creating Account...';
             document.getElementById('loading-overlay').style.display = 'flex';
 
-            socket.emit(action, { username: u, password: p, refCode: r });
+            // Send data to backend (includes email if registering)
+            socket.emit(action, { username: u, email: e, password: p, refCode: r });
         };
 
         socket.on('auth_success', (token) => {

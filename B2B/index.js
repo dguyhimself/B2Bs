@@ -246,14 +246,98 @@ function processBotCashout(botId, mult) {
 }
 // --- END BOT SYSTEM ---
 
-// --- BOT CHAT SYSTEM (HIGHLY REALISTIC) ---
+// --- BOT CHAT SYSTEM (HIGHLY REALISTIC & DEGEN UPGRADE) ---
 const botChatPhrases = {
-    general: ["LFG", "sol to the moon", "anyone winning?", "this game is addictive", "W", "GG", "bruh", "lol", "gl all", "hi", "yoo", "let's get this bread", "who has a promo code?", "green today boys"],
-    waiting: ["skipping this one", "all in", "feeling a 10x", "here we go", "don't get greedy guys", "red or green?", "send it", "betting max", "my balance is crying", "let it ride"],
-    crash_early: ["rigged", "lmao", "of course", "gg", "wtf", "rip my balance", "unlucky", "always at 1x", "brooo", "F", "scam", "i hate this game", "bruhhhh"],
-    crash_late: ["omg who held?", "insane", "I cashed out too early...", "holy shit", "huge W", "damn", "beautiful multiplier", "to the moon!", "wow", "easy money"]
+    general: [
+        "LFG!!!", 
+        "anyone winning today or we all getting rekt?", 
+        "this game is addictive as fuck", 
+        "W", 
+        "GG", 
+        "bruh", 
+        "lol", 
+        "gl all", 
+        "yo", 
+        "let's get this bread", 
+        "any active promo codes or rains?", 
+        "green day today boys",
+        "down 300 bucks fml",
+        "this site is actually clean",
+        "TRX pumping wtf",
+        "tip me $1 for luck? literally broke lmao",
+        "who is that high roller in the list?",
+        "chat is quiet as shit today",
+        "road to diamond rank is painful",
+        "how long have you guys been playing here?",
+        "ez money today, love to see it",
+        "don't play with rent money kids",
+        "i was down so bad yesterday but we back",
+        "anyone else just watching the rocket?",
+        "based dev team tbh"
+    ],
+    waiting: [
+        "skipping this one, looks sketchy", 
+        "ALL IN FUCK IT", 
+        "feeling a massive 10x coming here", 
+        "here we go again", 
+        "don't get greedy you greedy bastards", 
+        "red or green?", 
+        "send it!!!", 
+        "betting max, watch me blow up", 
+        "my balance is fucking crying", 
+        "let it ride!",
+        "fuck it, we ball",
+        "easy 2x incoming trust me",
+        "please don't crash at 1.00x i beg",
+        "loading up a fat bet",
+        "holding until 5x minimum",
+        "just put my last $20 on this, wish me luck",
+        "watch this go to 100x since i didn't bet big",
+        "ready for take off",
+        "let's print some usdt boys"
+    ],
+    crash_early: [
+        "rigged as fuck", 
+        "lmao rekt", 
+        "of course, standard bullshit", 
+        "gg", 
+        "wtf", 
+        "rip my balance", 
+        "unlucky as shit", 
+        "always crashes early when i bet", 
+        "brooo", 
+        "F", 
+        "fucking scammed", 
+        "i hate this fucking game", 
+        "bruhhhhh",
+        "1.02x? are you kidding me",
+        "instant crash is crazy",
+        "fuck my life",
+        "back to working 9-5",
+        "unbelievable shit right here",
+        "paper hands saved me there",
+        "crashed right before i clicked cashout, fuck lag"
+    ],
+    crash_late: [
+        "omg who held??? absolute gigachad", 
+        "insane run", 
+        "I cashed out way too fucking early...", 
+        "holy shit!!!", 
+        "huge massive W", 
+        "damn that was beautiful", 
+        "what a multiplier", 
+        "to the fucking moon!!!", 
+        "wow", 
+        "easy fucking money",
+        "my hands were shaking so bad",
+        "wish i bet more than 2 bucks on that ffs",
+        "congrats to anyone who held past 50x",
+        "absolute legendary multiplier",
+        "that was printing money",
+        "fucking massive",
+        "insane hand"
+    ]
 };
-
 function triggerBotChat(type) {
     // 50% chance a bot actually decides to type something so it's not robotic/spammy
     if (Math.random() > 0.5) return; 

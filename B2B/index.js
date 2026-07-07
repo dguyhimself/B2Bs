@@ -113,9 +113,44 @@ const pendingCommissions = {};
 // --- BOT SYSTEM (FAKE USERS & ACTIVITY) ---
 // --- BOT SYSTEM (FAKE USERS & ACTIVITY) ---
 
-const botAdjectives = ["Crypto", "Lucky", "Moon", "Degen", "Diamond", "Based", "Neon", "Golden", "Alpha", "Satoshi", "Hyper", "Toxic", "Swift", "Quiet", "Magic", "Dark", "Crazy"];
-const botNouns = ["Whale", "Ape", "King", "God", "Bull", "Chad", "Hands", "Roller", "Shark", "Ninja", "Trader", "Sniper", "Baron", "Lord", "Fox", "Wolf", "Bear"];
-const botNames = ["Alex", "Mike", "Sarah", "David", "Chris", "John", "Tom", "Sam", "Jake", "Kevin", "Leo", "Max", "Mia", "Zack", "Eli", "Ruby", "Josh"];
+const botAdjectives = [
+    // Original & Retro
+    "Crypto", "Lucky", "Moon", "Degen", "Diamond", "Based", "Neon", "Golden", "Alpha", "Satoshi", 
+    "Hyper", "Toxic", "Swift", "Quiet", "Magic", "Dark", "Crazy",
+    // Trading & Market states
+    "Bullish", "Bearish", "Rekt", "Leveraged", "Liquidated", "Pumped", "Dumped", "Short", "Long", "Broke",
+    // Tech & Web3
+    "Giga", "Cyber", "Meta", "Quantum", "Astro", "Stellar", "Cosmic", "Stealth", "Node", "Hash",
+    // Aesthetic & Attitude
+    "Savage", "Elite", "Prime", "Turbo", "Blaze", "Frost", "Shadow", "Rogue", "Ghost", "Sleek", 
+    "Shady", "Smug", "Heavy", "Hype", "Doubtful", "Based", "Glow", "Static", "Pixel", "Vintage"
+];
+
+const botNouns = [
+    // Original & Jargon
+    "Whale", "Ape", "King", "God", "Bull", "Bear", "Chad", "Hands", "Roller", "Shark", 
+    "Ninja", "Trader", "Sniper", "Baron", "Lord", "Fox", "Wolf",
+    // Jargon & Culture
+    "HODLer", "Miner", "Farmer", "Bagholder", "Wojak", "Pepe", "Yoloer", "Flipper", "Degen", "Gambler",
+    // Animals (Casino Slang)
+    "Shrimp", "Crab", "Fish", "Cobra", "Viper", "Badger", "Lion", "Tiger", "Falcon", "Eagle",
+    // Tech & Items
+    "Rocket", "Ledger", "Coin", "Token", "Gas", "Swap", "Node", "Stake", "Pool", "Wallet",
+    // Archetypes
+    "Goddess", "Samurai", "Knight", "Boss", "Guru", "Wizard", "Witch", "Spectre", "Pharaoh", "Baroness"
+];
+
+const botNames = [
+    // Original
+    "Alex", "Mike", "Sarah", "David", "Chris", "John", "Tom", "Sam", "Jake", "Kevin", 
+    "Leo", "Max", "Mia", "Zack", "Eli", "Ruby", "Josh",
+    // Global & Common Username Names
+    "Nick", "Ryan", "Emma", "Luke", "Sophia", "Jack", "James", "Olivia", "Liam", "Noah", 
+    "Chloe", "Tony", "Marcus", "Elena", "Victor", "Vlad", "Yuri", "Yuki", "Kenji", "Hans",
+    // Famous Crypto Figures & Memes
+    "Vitalik", "Satoshi", "Pavel", "Charles", "Elon", "Justin", "Dan", "Matt", "Ben", "Tyler", 
+    "Grace", "Anna", "Lisa", "Gavin", "Arthur", "Craig", "Michael", "Hal", "NickSzabo", "Winklevoss"
+];
 
 function generateRealisticBotName() {
     const rand = Math.random();

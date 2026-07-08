@@ -42,6 +42,49 @@ function decryptPrivateKey(encryptedString) {
     return decrypted.toString();
 }
 
+const nodemailer = require('nodemailer');
+
+// --- SECURE EMAIL SYSTEM (GENERIC SMTP UPGRADE) ---
+const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true', // true for port 465, false for 587
+    auth: {
+        user: process.env.SMTP_EMAIL || 'your-email@gmail.com',
+        pass: process.env.SMTP_PASSWORD || 'your-app-password'
+    }
+});
+
+async function sendVerificationEmail(email, token) {
+    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    const verifyLink = `${baseUrl}/verify/${token}`;
+
+    // DEV TRICK: Always print the link in the terminal so you can test without setting up emails!
+    console.log(`\n[SECURITY] Verification Link for ${email}: \n--> ${verifyLink}\n`);
+
+    if (!process.env.SMTP_EMAIL) return; // Skip sending real email if .env isn't set up yet
+
+    try {
+        await transporter.sendMail({
+            from: `"RetroCrush Casino" <${process.env.SMTP_EMAIL}>`,
+            to: email,
+            subject: 'RetroCrush - Verify Your Account to Withdraw',
+            html: `
+                <div style="font-family: monospace; background: #07070b; color: #fff; padding: 30px; text-align: center;">
+                    <h2 style="color: #00f3ff;">RETRO CRASH - SECURITY</h2>
+                    <p>Welcome! Please verify your email address to unlock account withdrawals.</p>
+                    <br>
+                    <a href="${verifyLink}" style="background: #26ec00; color: #000; padding: 15px 25px; text-decoration: none; font-weight: bold; border-radius: 4px;">VERIFY ACCOUNT</a>
+                    <br><br>
+                    <p style="color: #6c6f93; font-size: 12px;">If you didn't create an account, safely ignore this.</p>
+                </div>
+            `
+        });
+    } catch(err) {
+        console.error("[EMAIL ERROR] Could not send:", err);
+    }
+}
+
 const tronWeb = new TronWeb({
     fullHost: process.env.TRON_RPC_URL || 'https://api.trongrid.io',
     privateKey: process.env.HOT_WALLET_PRIVATE_KEY
@@ -84,6 +127,31 @@ app.get('/auth', (req, res) => {
     res.sendFile(path.join(__dirname, 'auth.html'));
 });
 
+// --- EMAIL VERIFICATION ENDPOINT ---
+app.get('/verify/:token', async (req, res) => {
+    const token = req.params.token;
+    const { data: user, error } = await supabase.from('users').select('id, is_verified').eq('verification_token', token).single();
+
+    if (error || !user) {
+        return res.status(400).send('<body style="background:#07070b; color:#ff3333; font-family:monospace; text-align:center; padding:50px;"><h2>INVALID OR EXPIRED LINK</h2></body>');
+    }
+
+    if (!user.is_verified) {
+        // Securely activate account and wipe the token
+        await supabase.from('users').update({ is_verified: true, verification_token: null }).eq('id', user.id);
+
+        // If the user is currently online playing the game, update their UI instantly!
+        if (players[user.id]) {
+            players[user.id].isVerified = true;
+            io.to(user.id).emit('stats_update', players[user.id]);
+            io.to(user.id).emit('deposit_result', 'ACCOUNT VERIFIED! WITHDRAWALS UNLOCKED.'); // Reusing the green toast
+        }
+    }
+
+    // Beautiful Retro Redirect Screen
+    res.send('<body style="background:#07070b; color:#39ff14; font-family:monospace; text-align:center; padding:50px;"><h2>ACCOUNT ACTIVATED!</h2><p>Redirecting to Arcade...</p><script>setTimeout(()=>window.location.href="/", 2000);</script></body>');
+});
+
 // --- Game Constants & State ---
 // --- Game Constants & State ---
 const GAME_STATE = { WAITING: 'WAITING', PLAYING: 'PLAYING', CRASHED: 'CRASHED' };
@@ -111,8 +179,6 @@ let activeBets = {};
 const pendingCommissions = {};
 
 // --- BOT SYSTEM (FAKE USERS & ACTIVITY) ---
-// --- BOT SYSTEM (FAKE USERS & ACTIVITY) ---
-
 const botAdjectives = [
     // Original & Retro
     "Crypto", "Lucky", "Moon", "Degen", "Diamond", "Based", "Neon", "Golden", "Alpha", "Satoshi", 
@@ -700,6 +766,27 @@ io.on('connection', async (socket) => {
         socket.emit('pong_res', timestamp);
     });
 
+    // --- RESEND VERIFICATION EMAIL ---
+    socket.on('resend_verification', async () => {
+        const p = players[userId];
+        if (!p || p.isVerified) return;
+
+        if (p.actionLock) return socket.emit('error_msg', 'Please wait...');
+        p.actionLock = true;
+
+        try {
+            const { data } = await supabase.from('users').select('verification_token').eq('id', userId).single();
+            if (data && data.verification_token) {
+                await sendVerificationEmail(p.email, data.verification_token);
+                socket.emit('deposit_result', 'VERIFICATION EMAIL SENT!'); 
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            p.actionLock = false;
+        }
+    });
+
     // 1. VERIFY JWT TOKEN SECURELY
     if (clientToken) {
         // If they have the old insecure 'USR_' token from our testing, force them to clear it
@@ -768,6 +855,9 @@ io.on('connection', async (socket) => {
         const newUserId = 'USR_' + crypto.randomBytes(8).toString('hex').toUpperCase();
         const account = await tronWeb.createAccount();
 
+        // ---> ADD THIS MISSING LINE <---
+        const vToken = crypto.randomBytes(32).toString('hex');
+
         const newUser = {
             id: newUserId,
             username: username.toUpperCase(),
@@ -786,6 +876,8 @@ io.on('connection', async (socket) => {
             total_referred: 0, 
             deposit_address: account.address.base58,
             private_key: encryptPrivateKey(account.privateKey),
+            is_verified: false,
+            verification_token: vToken,
             // --- LUCKY SPIN WELCOME REWARDS ---
             free_spins: 6,
             locked_bonus: 0.00,
@@ -808,6 +900,9 @@ io.on('connection', async (socket) => {
             console.error("CRITICAL Database Registration Error:", error); 
             return socket.emit('auth_error', 'Database error during registration.');
         }
+
+        // Send the email in the background
+        sendVerificationEmail(email, vToken);
 
         const secureToken = jwt.sign({ userId: newUserId }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
@@ -937,6 +1032,7 @@ io.on('connection', async (socket) => {
                     isWithdrawing: false,
                     private_key: finalPrivateKey, 
                     actionLock: false,
+                    isVerified: user.is_verified || false,
                     // --- NEW LUCKY SPIN FIELDS ---
                     freeSpins: user.free_spins || 0,
                     lockedBonus: parseFloat(user.locked_bonus || 0),
@@ -1046,6 +1142,11 @@ io.on('connection', async (socket) => {
             socket.on('request_withdraw', async (data) => {
                 const p = players[userId];
                 if (!p) return socket.emit('error_msg', 'Player not found.');
+
+                // --- SECURITY: BLOCK UNVERIFIED WITHDRAWALS ---
+                if (!p.isVerified) {
+                    return socket.emit('error_msg', 'VERIFY EMAIL TO WITHDRAW.');
+                }
                 if (p.isWithdrawing) return socket.emit('error_msg', 'Withdrawal processing.');
 
                 const requestedUsdt = parseFloat(data.amount);

@@ -1068,9 +1068,10 @@ io.on('connection', async (socket) => {
                     const usdtBalance = safeDiv(balanceSun.toString(), 1_000_000);
 
                     // SECURITY FIX: Ignore dust deposits. Minimum sweep is $1.00 to prevent TRX draining
-                    if (usdtBalance < 1.00) {
+                    // SECURITY FIX: Ignore dust deposits. Minimum sweep is $5.00 to prevent TRX draining
+                    if (usdtBalance < 5.00) {
                         p.actionLock = false;
-                        return socket.emit('deposit_result', 'MINIMUM DEPOSIT IS $1.00');
+                        return socket.emit('deposit_result', 'MINIMUM DEPOSIT IS $5.00');
                     }
 
                     socket.emit('deposit_result', 'FUNDING GAS & SWEEPING...');

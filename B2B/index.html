@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ARCADE CRASH PRO</title>
+    <title>RetroCrush</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -694,9 +694,63 @@
             display: flex; justify-content: center; padding-top: 15px; 
             font-family: 'Press Start 2P', monospace; font-size: 10px; color: var(--cyan); text-shadow: 0 0 5px #000;
         }
+        /* --- FULLSCREEN INITIAL LOADING OVERLAY --- */
+        #loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
+            background: rgba(7, 7, 11, 1); /* Solid dark background to hide the empty UI */
+            z-index: 100000; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; gap: 20px;
+            transition: opacity 0.4s ease, visibility 0.4s ease;
+        }
+
+        .loader-rocket { 
+            color: var(--cyan);
+            filter: drop-shadow(0 0 15px rgba(0, 243, 255, 0.6));
+            animation: blastOff 0.5s ease-in-out infinite alternate; 
+        }
+        @keyframes blastOff { 
+            from { transform: translateY(0) scale(1); } 
+            to { transform: translateY(-10px) scale(1.05); } 
+        }
+
+        .loader-text { 
+            font-family: 'Press Start 2P', monospace; 
+            font-size: 10px; color: var(--cyan); 
+            letter-spacing: 2px; text-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
+            animation: pulseText 1s infinite; 
+        }
+        @keyframes pulseText { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        .loader-bar { 
+            width: 200px; height: 4px; background: #1a1c29; 
+            border-radius: 4px; overflow: hidden; position: relative;
+        }
+        .loader-fill { 
+            width: 40%; height: 100%; background: var(--cyan); 
+            box-shadow: 0 0 10px var(--cyan); position: absolute;
+            animation: loadFill 1.5s infinite ease-in-out; 
+        }
+        @keyframes loadFill { 
+            0% { left: -40%; } 
+            100% { left: 100%; } 
+        }
     </style>
 </head>
 <body>
+    <body>
+        <!-- INITIAL SYSTEM LOADING SCREEN -->
+        <div id="loading-overlay">
+            <div class="loader-rocket">
+                <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path>
+                    <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path>
+                    <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path>
+                    <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path>
+                </svg>
+            </div>
+            <div class="loader-text">CONNECTING TO SERVER...</div>
+            <div class="loader-bar"><div class="loader-fill"></div></div>
+        </div>
     <div id="header">
         <!-- Left: Balance -->
         <div class="bal-wrap">
@@ -899,25 +953,50 @@
         <div id="view-profile" class="view-tab">
 
             <!-- VIP & Profile Header -->
-            <div class="dash-section" style="border-top: 2px solid var(--cyan); background: linear-gradient(180deg, rgba(17,18,29,0.9) 0%, rgba(0,0,0,0.4) 100%);">
-                <div class="vip-header">
-                    <div id="vip-big-icon" class="vip-badge-container"></div>
-                    <div class="vip-info">
-                        <div id="stat-username" style="font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; margin-bottom: 4px;">PLAYER</div>
+            <div class="dash-section" style="border-top: 2px solid var(--cyan); background: linear-gradient(180deg, rgba(17,18,29,0.9) 0%, rgba(0,0,0,0.4) 100%); padding: 15px;">
+                <div class="vip-header" style="align-items: center; margin-bottom: 0;">
 
-                        <!-- NEW: User Email Display -->
-                        <div style="font-family: 'VT323', monospace; font-size: 16px; color: var(--text-dim); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                            <span id="stat-email-val" style="letter-spacing: 0.5px;">Loading...</span>
+                    <!-- Left: Big VIP Emblem -->
+                    <div id="vip-big-icon" class="vip-badge-container" style="width: 55px; height: 55px;"></div>
+
+                    <!-- Right: Profile Info -->
+                    <div class="vip-info" style="flex: 1; min-width: 0;">
+
+                        <!-- Top Row: Name/Email (Left) & Verify Badge (Right) -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+
+                            <!-- Name & Email Group -->
+                            <div style="display: flex; flex-direction: column; gap: 6px; overflow: hidden; padding-right: 10px;">
+                                <div id="stat-username" style="font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">PLAYER</div>
+
+                                <div style="font-family: 'VT323', monospace; font-size: 16px; color: var(--text-dim); display: flex; align-items: center; gap: 6px;">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                                    <span id="stat-email-val" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Loading...</span>
+                                </div>
+                            </div>
+
+                            <!-- Verify Badge Group -->
+                            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; padding-top: 2px;">
+                                <div id="verify-badge" style="font-family: 'Press Start 2P', monospace; font-size: 7px; padding: 4px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #333;">
+                                    <div id="verify-dot" style="width: 6px; height: 6px; border-radius: 50%; background: grey;"></div>
+                                    <span id="verify-text">CHECKING</span>
+                                </div>
+                                <button id="btn-resend-verify" onclick="resendVerify()" style="display: none; background: rgba(0,243,255,0.1); border: 1px solid var(--cyan); color: var(--cyan); font-family: 'Press Start 2P'; font-size: 6px; padding: 4px 6px; border-radius: 4px; cursor: pointer; transition: 0.2s;">RESEND</button>
+                            </div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; font-size: 8px; font-family: 'Press Start 2P', monospace; margin-bottom: 6px;">
-                            <span id="vip-rank-name" style="color: #cd7f32;">BRONZE</span>
-                            <span id="vip-next-name" style="color: #888;">NEXT: SILVER</span>
+
+                        <!-- Bottom Row: Clean Inset Progress Box -->
+                        <div style="background: none; padding: 10px; border-radius: 6px; border: none; margin-top: 12px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 8px; font-family: 'Press Start 2P', monospace; margin-bottom: 8px;">
+                                <span id="vip-rank-name" style="color: #cd7f32; letter-spacing: 0.5px;">BRONZE</span>
+                                <span id="vip-next-name" style="color: #6c6f93;">NEXT: SILVER</span>
+                            </div>
+                            <div style="width: 100%; height: 6px; background: #07070b; border-radius: 3px; overflow: hidden; border: 1px solid #1a1c29;">
+                                <div id="vip-progress-fill" style="height: 100%; width: 0%; background: #cd7f32; box-shadow: 0 0 8px #cd7f32; transition: width 0.5s ease-out;"></div>
+                            </div>
+                            <div id="vip-progress-text" style="font-size: 12px; color: var(--text-dim); margin-top: 6px; text-align: right; font-family: 'VT323', monospace;">0.00 / 10.00 USDT</div>
                         </div>
-                        <div style="width: 100%; height: 6px; background: #000; border-radius: 3px; overflow: hidden; border: 1px solid #333;">
-                            <div id="vip-progress-fill" style="height: 100%; width: 0%; background: #cd7f32; box-shadow: 0 0 8px #cd7f32;"></div>
-                        </div>
-                        <div id="vip-progress-text" style="font-size: 12px; color: var(--text-dim); margin-top: 6px; text-align: right; font-family: 'VT323', monospace;">0.00 / 10.00 SOL</div>
+
                     </div>
                 </div>
             </div>
@@ -1068,18 +1147,34 @@
 
         <!-- RANKS TAB (Leaderboard & Tech) -->
         <div id="view-ranks" class="view-tab">
-            <div class="dash-section" style="border-color: #fff;">
-                <div class="dash-section-title" style="color: #fff; justify-content: center;">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10c3 0 5 2 5 5s-2 5-5 5H7c-3 0-5-2-5-5s2-5 5-5z"/></svg>
-                    HIGH ROLLERS
+
+            <!-- HIGH ROLLERS SECTION (Unboxed & Professional) -->
+            <div style="display: flex; flex-direction: column; flex: 1; padding-top: 5px;">
+
+                <!-- Seamless Page Header -->
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <div style="color: var(--yellow); font-family: 'Press Start 2P', monospace; font-size: 14px; margin-bottom: 8px; text-shadow: 0 0 15px rgba(255,213,0,0.3); display: flex; align-items: center; justify-content: center; gap: 10px;">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10c3 0 5 2 5 5s-2 5-5 5H7c-3 0-5-2-5-5s2-5 5-5z"/></svg>
+                        HIGH ROLLERS
+                    </div>
+                    <div style="color: var(--text-dim); font-size: 18px; font-family: 'VT323', monospace; letter-spacing: 1px;">Top 10 highest earners of all time</div>
                 </div>
-                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #333; padding-bottom: 8px; margin-bottom: 8px; font-family: 'Press Start 2P'; font-size: 8px; color: var(--text-dim);">
-                    <div style="flex: 0.5;">#</div><div style="flex: 2;">PLAYER</div><div style="flex: 1.5; text-align: right;">PROFIT</div>
+
+                <!-- Minimalist Table Headers -->
+                <div style="display: flex; justify-content: space-between; padding: 0 10px 10px 10px; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #5a5d7a; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                    <div style="flex: 0.5;">RANK</div>
+                    <div style="flex: 2;">PLAYER</div>
+                    <div style="flex: 1.5; text-align: right;">NET PROFIT</div>
                 </div>
-                <div id="leaderboard-body" style="display: flex; flex-direction: column; gap: 4px;">
-                    <div style="font-size: 14px; color: var(--text-dim); text-align: center; padding: 10px 0;">LOADING DATA...</div>
+
+                <!-- Leaderboard Target Container -->
+                <div id="leaderboard-body" style="display: flex; flex-direction: column; gap: 6px; margin-top: 10px; margin-bottom: 20px;">
+                    <div style="font-size: 20px; color: var(--text-dim); text-align: center; padding: 30px 0; font-family: 'VT323', monospace;">LOADING LEADERBOARD...</div>
                 </div>
+
             </div>
+
+            <!-- PROVABLY FAIR SECTION STARTS HERE (Leave your existing Provably Fair box below this) -->
 
             <div class="dash-section" style="border-color: var(--yellow);">
                 <div class="dash-section-title" style="color: var(--yellow);">
@@ -1771,7 +1866,7 @@
             }
             if(s==='CANCEL_NEXT') {
                 ui.btn.classList.add('btn-autostop'); 
-                ui.btnMain.innerText='CANCEL NEXT'; 
+                ui.btnMain.innerText='CANCEL'; 
                 ui.btnSub.innerText='Queued'; 
             }
             // ------------------------------
@@ -1803,9 +1898,31 @@
             // --- NEW: Profile USD Calculations ---
             // --- NEW: Profile USD Calculations ---
             ui.stUser.innerText = p.username;
-
-            // ADD THIS NEW LINE:
             document.getElementById('stat-email-val').innerText = p.email || 'No email linked';
+
+            // --- VERIFICATION BADGE LOGIC ---
+            const vBadge = document.getElementById('verify-badge');
+            const vDot = document.getElementById('verify-dot');
+            const vText = document.getElementById('verify-text');
+            const vBtn = document.getElementById('btn-resend-verify');
+
+            if (p.isVerified) {
+                vBadge.style.borderColor = 'rgba(57, 255, 20, 0.3)';
+                vBadge.style.background = 'rgba(57, 255, 20, 0.05)';
+                vDot.style.background = 'var(--green)';
+                vDot.style.boxShadow = '0 0 8px var(--green)';
+                vText.innerText = 'VERIFIED';
+                vText.style.color = 'var(--green)';
+                vBtn.style.display = 'none'; // Hide resend button
+            } else {
+                vBadge.style.borderColor = 'rgba(255, 51, 51, 0.3)';
+                vBadge.style.background = 'rgba(255, 51, 51, 0.05)';
+                vDot.style.background = 'var(--red)';
+                vDot.style.boxShadow = '0 0 8px var(--red)';
+                vText.innerText = 'UNVERIFIED';
+                vText.style.color = 'var(--red)';
+                vBtn.style.display = 'inline-block'; // Show resend button
+            }
 
             ui.stRnd.innerText = p.totalBets;
 
@@ -2104,6 +2221,14 @@
             document.getElementById('online-count').innerText = count;
         });
 
+        window.resendVerify = () => {
+            playSfx('click');
+            const btn = document.getElementById('btn-resend-verify');
+            btn.innerText = "SENDING...";
+            socket.emit('resend_verification');
+            setTimeout(() => { btn.innerText = "RESEND EMAIL"; }, 3000);
+        };
+
         window.handleAction = () => {
             playSfx('click');
 
@@ -2139,6 +2264,12 @@
         window.requestWithdraw = () => {
             const addr = document.getElementById('withdraw-address').value.trim();
             const amt = parseFloat(document.getElementById('withdraw-amount').value);
+    
+            // INSTANT FRONTEND VERIFICATION CHECK
+            if (!myPlayer.isVerified) {
+                playSfx('error');
+                return showToast('VERIFY EMAIL TO WITHDRAW');
+            }
 
             if(!addr) return showToast('ENTER DESTINATION ADDRESS');
             if(isNaN(amt) || amt <= 0 || amt > myBalance) return showToast('INVALID AMOUNT');
@@ -2364,31 +2495,60 @@
             lbBody.innerHTML = '';
 
             if (!data || data.length === 0) {
-                lbBody.innerHTML = '<div style="font-size: 12px; color: var(--text-dim);">No players yet.</div>';
+                lbBody.innerHTML = '<div style="font-size: 16px; color: var(--text-dim); text-align: center; padding: 20px; font-family: \'VT323\', monospace;">No players yet.</div>';
                 return;
             }
 
             data.forEach((player, index) => {
                 const row = document.createElement('div');
-                row.style.display = 'flex';
-                row.style.fontSize = '18px';
-                row.style.borderBottom = '1px solid #222';
-                row.style.padding = '8px 0';
 
-                // Colorize the top 3 players (Gold, Cyan, White)
-                row.style.color = index === 0 ? 'var(--yellow)' : (index < 3 ? 'var(--cyan)' : 'var(--text-main)');
-
-                // Convert their SOL profit to USD using the live oracle price
+                // Convert their SOL profit to USD
                 const profitUsd = parseFloat(player.net_profit) * currentSolPrice;
                 const isPositive = profitUsd >= 0;
 
+                // Rank Badge & Card Styling Logic
+                let rankHtml = '';
+                let rowBg = 'rgba(0,0,0,0.3)';
+                let rowBorder = '1px solid #1a1c29';
+                let nameColor = '#fff';
+
+                if (index === 0) {
+                    // 1st Place (Gold)
+                    rankHtml = `<div style="width: 24px; height: 24px; background: var(--yellow); color: #000; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 10px; box-shadow: 0 0 10px rgba(255,213,0,0.5);">1</div>`;
+                    rowBg = 'rgba(255, 213, 0, 0.05)';
+                    rowBorder = '1px solid rgba(255, 213, 0, 0.3)';
+                    nameColor = 'var(--yellow)';
+                } else if (index === 1) {
+                    // 2nd Place (Silver)
+                    rankHtml = `<div style="width: 24px; height: 24px; background: #c0c0c0; color: #000; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 10px; box-shadow: 0 0 10px rgba(192,192,192,0.3);">2</div>`;
+                } else if (index === 2) {
+                    // 3rd Place (Bronze)
+                    rankHtml = `<div style="width: 24px; height: 24px; background: #cd7f32; color: #000; display: flex; align-items: center; justify-content: center; border-radius: 4px; font-family: 'Press Start 2P', monospace; font-size: 10px; box-shadow: 0 0 10px rgba(205,127,50,0.3);">3</div>`;
+                } else {
+                    // Everyone else (Standard number)
+                    rankHtml = `<div style="width: 24px; height: 24px; color: var(--text-dim); display: flex; align-items: center; justify-content: center; font-family: 'Press Start 2P', monospace; font-size: 10px;">${index + 1}</div>`;
+                }
+
+                // Row Container Styles
+                row.style.display = 'flex';
+                row.style.alignItems = 'center';
+                row.style.padding = '10px 15px';
+                row.style.background = rowBg;
+                row.style.border = rowBorder;
+                row.style.borderRadius = '6px';
+                row.style.fontFamily = "'VT323', monospace";
+                row.style.fontSize = '20px';
+                row.style.transition = 'background 0.2s';
+
                 row.innerHTML = `
-                    <div style="flex: 0.5; text-align: left; opacity: 0.7;">${index + 1}</div>
-                    <div style="flex: 2; text-align: left; font-family: 'Press Start 2P'; font-size: 8px; display: flex; align-items: center; overflow: hidden; text-overflow: ellipsis;">
+                    <div style="flex: 0.5; display: flex; align-items: center;">${rankHtml}</div>
+
+                    <div style="flex: 2; color: ${nameColor}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 1px; ${index === 0 ? 'text-shadow: 0 0 8px rgba(255,213,0,0.4);' : ''}">
                         ${player.username}
                     </div>
-                    <div style="flex: 1.5; text-align: right; color: ${isPositive ? 'var(--green)' : 'var(--red)'};">
-                        ${isPositive ? '+' : '-'}$${Math.abs(profitUsd).toFixed(2)}
+
+                    <div style="flex: 1.5; text-align: right; color: ${isPositive ? 'var(--green)' : 'var(--text-dim)'}; ${isPositive ? 'text-shadow: 0 0 8px rgba(57, 255, 20, 0.3);' : ''}">
+                        ${isPositive ? '+' : ''}$${profitUsd.toFixed(2)}
                     </div>
                 `;
                 lbBody.appendChild(row);
@@ -2451,6 +2611,14 @@
 
         // Update your socket.on('init') to look like this:
         socket.on('init', (d) => {
+            // --- HIDE THE LOADING SCREEN ---
+            const loader = document.getElementById('loading-overlay');
+            if (loader) {
+                loader.style.opacity = '0';
+                loader.style.visibility = 'hidden';
+                setTimeout(() => loader.style.display = 'none', 400); // Wait for CSS fade out
+            }
+            // -------------------------------
             updateStats(d.player);
             state = d.state;
             currentHash = d.hash || ''; 

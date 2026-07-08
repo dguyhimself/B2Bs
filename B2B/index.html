@@ -734,6 +734,36 @@
             0% { left: -40%; } 
             100% { left: 100%; } 
         }
+        /* --- SMOOTH LUCKY SPIN MODAL --- */
+        #wheel-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 99999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+
+            /* Hidden state */
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        #wheel-modal.show {
+            /* Visible state */
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        #wheel-modal-content {
+            display: flex; flex-direction: column; align-items: center;
+            /* Zoomed out slightly when hidden */
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #wheel-modal.show #wheel-modal-content {
+            /* Pops to normal size smoothly */
+            transform: scale(1);
+        }
     </style>
 </head>
 <body>
@@ -773,7 +803,7 @@
             <div class="action-row">
                 <!-- FREE SPINS BUTTON -->
                 <!-- FREE SPINS BUTTON (UPGRADED) -->
-                <div id="header-spin-btn" style="display:none; align-items:center; justify-content:center; background:rgba(255, 213, 0, 0.1); border:1px solid var(--yellow); color:var(--yellow); border-radius:12px; padding:8px 12px; cursor:pointer; font-family:'Press Start 2P', monospace; font-size:10px; text-shadow:0 0 8px rgba(255,213,0,0.5); box-shadow: 0 0 15px rgba(255,213,0,0.2);" onclick="document.getElementById('wheel-modal').style.display='flex'">
+                <div id="header-spin-btn" style="display:none; align-items:center; justify-content:center; background:rgba(255, 213, 0, 0.1); border:1px solid var(--yellow); color:var(--yellow); border-radius:12px; padding:8px 12px; cursor:pointer; font-family:'Press Start 2P', monospace; font-size:10px; text-shadow:0 0 8px rgba(255,213,0,0.5); box-shadow: 0 0 15px rgba(255,213,0,0.2);" onclick="openWheelModal()">
                     <!-- Added inline pulsing animation to the Gift SVG to catch the user's eye -->
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" style="animation: pulse 1.5s infinite; margin-top: -1px;">
                         <polyline points="20 12 20 22 4 22 4 12"></polyline>
@@ -1224,30 +1254,34 @@
         <div class="hp-list" id="hm-list"></div>
     </div>
 
-    <!-- LUCKY SPIN MODAL -->
-    <div id="wheel-modal" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:99999; flex-direction:column; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
-        <div style="font-family:'Press Start 2P'; color:var(--yellow); font-size:16px; margin-bottom: 20px; text-shadow:0 0 10px var(--yellow);">LUCKY SPIN</div>
+        <!-- LUCKY SPIN MODAL -->
+        <div id="wheel-modal">
+            <!-- Inner wrapper for the pop-in zoom effect -->
+            <div id="wheel-modal-content">
+                <div style="font-family:'Press Start 2P'; color:var(--yellow); font-size:16px; margin-bottom: 20px; text-shadow:0 0 10px var(--yellow);">LUCKY SPIN</div>
 
-        <div class="wheel-container">
-            <div class="wheel-pointer">▼</div>
-            <div class="wheel" id="spin-wheel">
-                <div class="wheel-seg" style="--i:0; color: #6c6f93;"><span>$0</span></div>
-                <div class="wheel-seg" style="--i:1;"><span>$1</span></div>
-                <div class="wheel-seg" style="--i:2; color: #6c6f93;"><span>$0</span></div>
-                <div class="wheel-seg" style="--i:3;"><span>$5</span></div>
-                <div class="wheel-seg" style="--i:4; color: #6c6f93;"><span>$0</span></div>
-                <div class="wheel-seg" style="--i:5;"><span>$10</span></div>
-                <div class="wheel-seg" style="--i:6; color: #6c6f93;"><span>$0</span></div>
-                <div class="wheel-seg" style="--i:7; color: var(--magenta);"><span>$50</span></div>
+                <div class="wheel-container">
+                    <div class="wheel-pointer">▼</div>
+                    <div class="wheel" id="spin-wheel">
+                        <div class="wheel-seg" style="--i:0; color: #6c6f93;"><span>$0</span></div>
+                        <div class="wheel-seg" style="--i:1;"><span>$1</span></div>
+                        <div class="wheel-seg" style="--i:2; color: #6c6f93;"><span>$0</span></div>
+                        <div class="wheel-seg" style="--i:3;"><span>$5</span></div>
+                        <div class="wheel-seg" style="--i:4; color: #6c6f93;"><span>$0</span></div>
+                        <div class="wheel-seg" style="--i:5;"><span>$10</span></div>
+                        <div class="wheel-seg" style="--i:6; color: #6c6f93;"><span>$0</span></div>
+                        <div class="wheel-seg" style="--i:7; color: var(--magenta);"><span>$50</span></div>
+                    </div>
+                </div>
+
+                <button id="spin-btn" onclick="spinWheel()" style="margin-top:30px; padding:15px 30px; background:var(--cyan); border:none; border-radius:6px; font-family:'Press Start 2P'; font-size:12px; cursor:pointer; box-shadow:0 4px 0 #009926; transition: 0.2s;">
+                    SPIN NOW (<span id="spin-count">0</span>)
+                </button>
+
+                <!-- Triggers the close function -->
+                <div style="color:var(--text-dim); margin-top:25px; font-size:10px; font-family:'Press Start 2P'; cursor: pointer; transition: color 0.2s;" onclick="closeWheelModal()" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-dim)'">CLOSE</div>
             </div>
         </div>
-
-        <button id="spin-btn" onclick="spinWheel()" style="margin-top:30px; padding:15px 30px; background:var(--cyan); border:none; border-radius:6px; font-family:'Press Start 2P'; font-size:12px; cursor:pointer; box-shadow:0 4px 0 #009926; transition: 0.2s;">
-            SPIN NOW (<span id="spin-count">0</span>)
-        </button>
-
-        <div style="color:var(--text-dim); margin-top:15px; font-size:10px; font-family:'Press Start 2P'; cursor: pointer;" onclick="document.getElementById('wheel-modal').style.display='none'">CLOSE</div>
-    </div>
 
     <!-- MODERN BOTTOM NAV -->
     <div id="bottom-nav">
@@ -2868,6 +2902,16 @@
             document.getElementById('bonus-timer').innerText = `${h}:${m}:${s}`;
         }
 
+        window.openWheelModal = () => {
+            playSfx('click'); 
+            document.getElementById('wheel-modal').classList.add('show');
+        };
+
+        window.closeWheelModal = () => {
+            playSfx('click');
+            document.getElementById('wheel-modal').classList.remove('show');
+        };
+
         window.spinWheel = () => {
             if (isSpinning) return;
             playSfx('click');
@@ -2914,7 +2958,7 @@
                     updateStats(myPlayer); // Force visual refresh
 
                     if (data.freeSpins <= 0) {
-                        setTimeout(() => { document.getElementById('wheel-modal').style.display = 'none'; }, 2000);
+                        setTimeout(() => { closeWheelModal(); }, 2000);
                     }
                 }
             }, 4000); // Wait for the 4-second CSS transition to end

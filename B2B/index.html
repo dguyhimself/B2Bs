@@ -1828,6 +1828,8 @@
             }
 
             // --- 5. ROCKET LOGIC ---
+            let rocketX = cw / 2; // Default horizontal center
+
             if (state === 'CRASHED') {
                 for(let i=explosion.length-1; i>=0; i--) {
                     let p = explosion[i];
@@ -1836,7 +1838,6 @@
                     else { 
                         ctx.globalAlpha = p.life; 
                         ctx.fillStyle = p.c; 
-                        // Draw variable sized debris
                         ctx.fillRect(p.x, p.y, p.s || 4, p.s || 4); 
                     }
                 }
@@ -1853,11 +1854,17 @@
                     let easeOut = 1 - Math.pow(1 - launchProgress, 3);
                     rocketY = startY - ((startY - targetY) * easeOut);
 
-                    // Violent shake at high multipliers
-                    rocketY += currentMult > 3 ? (Math.random()-0.5)*6 : (Math.random()-0.5)*2; 
+                    // --- SMOOTH CINEMATIC SHAKE FIX ---
+                    // Replaced glitchy random jitter with fluid time-based sine waves.
+                    // The shake smoothly intensifies as the multiplier grows, capping safely at 4px.
+                    let shakeMagnitude = Math.min(currentMult * 0.3, 4); 
+
+                    rocketY += Math.sin(Date.now() / 20) * shakeMagnitude; // Vertical engine vibration
+                    rocketX += Math.cos(Date.now() / 15) * (shakeMagnitude * 0.6); // Slight horizontal wobble
                 }
 
-                let b = drawSprite(rocketSprite, cw/2, rocketY, 4);
+                // Pass the smooth rocketX and rocketY coordinates
+                let b = drawSprite(rocketSprite, rocketX, rocketY, 4);
                 if(state === 'PLAYING' || Math.random() > 0.5) {
                     createExhaust(b.bx, b.by); createExhaust(b.bx, b.by);
                 }

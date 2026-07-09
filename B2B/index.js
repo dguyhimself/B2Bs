@@ -44,20 +44,16 @@ function decryptPrivateKey(encryptedString) {
 
 const nodemailer = require('nodemailer');
 
-// --- SECURE EMAIL SYSTEM (GENERIC SMTP UPGRADE) ---
+// --- SECURE EMAIL SYSTEM (GMAIL OPTIMIZED) ---
 const transporter = nodemailer.createTransport({
-    pool: true,             // CRITICAL FIX: Keep connection alive & reuse it
-    maxConnections: 1,      // Use only 1 socket so Google doesn't think we are a botnet
-    maxMessages: 100,       // Reuse this connection for 100 emails before recycling
-
-    host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '465'),
-    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
+    service: 'gmail',       // CRITICAL: Automatically configures correct host, port, and TLS for Google!
+    pool: true,             // Keep connection alive
+    maxConnections: 1,      // 1 socket to prevent botnet flags
+    maxMessages: 100,
     auth: {
-        user: process.env.SMTP_EMAIL || 'your-email@gmail.com',
-        pass: process.env.SMTP_PASSWORD || 'your-app-password'
+        user: process.env.SMTP_EMAIL,      // Still grabs from Render Env Vars
+        pass: process.env.SMTP_PASSWORD    // Still grabs from Render Env Vars
     },
-    family: 4, 
     connectionTimeout: 10000, 
     greetingTimeout: 10000,
     socketTimeout: 10000

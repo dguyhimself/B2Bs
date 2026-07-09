@@ -47,22 +47,27 @@ const nodemailer = require('nodemailer');
 // --- SECURE EMAIL SYSTEM (GENERIC SMTP UPGRADE) ---
 const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST || 'smtp.gmail.com',
-    port: parseInt(process.env.SMTP_PORT || '587'),
-    secure: process.env.SMTP_SECURE === 'true', // true for port 465, false for 587
+    port: parseInt(process.env.SMTP_PORT || '465'),
+    secure: process.env.SMTP_SECURE === 'true', // true for 465, false for 587
     auth: {
         user: process.env.SMTP_EMAIL || 'your-email@gmail.com',
         pass: process.env.SMTP_PASSWORD || 'your-app-password'
-    }
+    },
+    // FIX 1: Force IPv4 (Resolves Render's ETIMEDOUT bug with Gmail IPv6)
+    family: 4, 
+    // FIX 2: Strict 8-second timeouts so the button never gets permanently stuck
+    connectionTimeout: 8000, 
+    greetingTimeout: 8000,
+    socketTimeout: 8000
 });
 
 async function sendVerificationEmail(email, token) {
     const baseUrl = process.env.APP_URL || 'http://localhost:3000';
     const verifyLink = `${baseUrl}/verify/${token}`;
 
-    // DEV TRICK: Always print the link in the terminal so you can test without setting up emails!
     console.log(`\n[SECURITY] Verification Link for ${email}: \n--> ${verifyLink}\n`);
 
-    if (!process.env.SMTP_EMAIL) return; // Skip sending real email if .env isn't set up yet
+    if (!process.env.SMTP_EMAIL) return; 
 
     try {
         await transporter.sendMail({
@@ -80,8 +85,11 @@ async function sendVerificationEmail(email, token) {
                 </div>
             `
         });
+        return true;
     } catch(err) {
-        console.error("[EMAIL ERROR] Could not send:", err);
+        console.error("[EMAIL ERROR] Could not send:", err.message);
+        // FIX 3: Actually throw the error so the lock releases instantly!
+        throw err; 
     }
 }
 

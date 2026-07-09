@@ -771,19 +771,41 @@ io.on('connection', async (socket) => {
         const p = players[userId];
         if (!p || p.isVerified) return;
 
+        // 1. SECURITY: Old accounts might not have an email string at all
+        if (!p.email || p.email.trim() === '') {
+            return socket.emit('error_msg', 'No email linked to this old account. Please create a new account.');
+        }
+
         if (p.actionLock) return socket.emit('error_msg', 'Please wait...');
         p.actionLock = true;
 
         try {
-            const { data } = await supabase.from('users').select('verification_token').eq('id', userId).single();
-            if (data && data.verification_token) {
-                await sendVerificationEmail(p.email, data.verification_token);
-                socket.emit('deposit_result', 'VERIFICATION EMAIL SENT!'); 
+            // 2. Fetch the token, but safely catch DB errors this time!
+            const { data, error } = await supabase.from('users').select('verification_token').eq('id', userId).single();
+
+            if (error) {
+                console.error("[DB ERROR] Failed to fetch token:", error.message);
+                return socket.emit('error_msg', 'Database error. Check server terminal.');
             }
+
+            let vToken = data?.verification_token;
+
+            // 3. THE FIX: If it's an old account missing a token, generate one instantly!
+            if (!vToken) {
+                vToken = crypto.randomBytes(32).toString('hex');
+                // Save the newly generated token to their database row
+                await supabase.from('users').update({ verification_token: vToken }).eq('id', userId);
+            }
+
+            // 4. Actually send the email
+            await sendVerificationEmail(p.email, vToken);
+            socket.emit('deposit_result', 'VERIFICATION EMAIL SENT!'); 
+
         } catch (e) {
-            console.error(e);
+            console.error("[RESEND ERROR]:", e);
+            socket.emit('error_msg', 'Server failed to send email.');
         } finally {
-            p.actionLock = false;
+            p.actionLock = false; // Always unlock
         }
     });
 

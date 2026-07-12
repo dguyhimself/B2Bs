@@ -490,9 +490,14 @@
         .btn-cashout { background: var(--yellow); color: #000; box-shadow: 0 4px 15px rgba(255, 213, 0, 0.4); animation: pulseBtn 1s infinite; }
 
         .btn-disabled { background: #11121d; color: #444; border: 1px solid #23253b; pointer-events: none; }
-        .btn-autostop { background: var(--red); color: #fff; box-shadow: 0 4px 15px rgba(255, 51, 51, 0.3); }
-        .btn-subtext { font-size: 13px; font-family: 'VT323', monospace; opacity: 0.8; letter-spacing: 1px; }
 
+        /* Auto-Stop (High Alert) */
+        .btn-autostop { background: linear-gradient(180deg, #ff3333, #cc0000); color: #fff; text-shadow: 1px 1px 0px rgba(0,0,0,0.6); box-shadow: 0 4px 0px #880000; animation: pulseBtn 1.5s infinite; }
+
+        /* NEW: Muted Cancel Queue Button (Low Alert) */
+        .btn-cancel { background: rgba(255, 51, 51, 0.1); color: #ff7373; border: 1px solid rgba(255, 51, 51, 0.3); box-shadow: none; }
+
+        .btn-subtext { font-size: 13px; font-family: 'VT323', monospace; opacity: 0.8; letter-spacing: 1px; }
 
         /* -- TAB: STATS -- */
         /* --- DASHBOARD & PROFILE STYLES --- */
@@ -628,8 +633,22 @@
         .mode-tab { flex: 1; text-align: center; font-family: 'Press Start 2P'; font-size: 8px; padding: 10px 0; color: var(--text-dim); cursor: pointer; transition: 0.2s; }
         .mode-tab.active { background: #1a1a24; color: var(--cyan); border-bottom: 2px solid var(--cyan); text-shadow: none; }
 
-        /* Auto-Stop Button State */
-        .btn-autostop { background: linear-gradient(180deg, #ff3333, #cc0000); color: #fff; text-shadow: 1px 1px 0px rgba(0,0,0,0.6); box-shadow: 0 4px 0px #880000; animation: pulseBtn 1.5s infinite; }
+        /* Clean Button States */
+        .btn-bet { background: var(--cyan); color: #000; box-shadow: 0 2px 0 #009926, 0 0 8px rgba(2, 155, 48, 0.74); }
+        .btn-waiting { background: #151726; color: #6c6f93; pointer-events: none; border: 1px solid #23253b; }
+
+        /* Golden BC.GAME Style Cashout Button */
+        .btn-cashout { background: var(--yellow); color: #000; box-shadow: 0 4px 15px rgba(255, 213, 0, 0.4); animation: pulseBtn 1s infinite; }
+
+        .btn-disabled { background: #11121d; color: #444; border: 1px solid #23253b; pointer-events: none; box-shadow: none; }
+
+        /* UPDATED: Muted Auto-Stop (Matches the cancel queue aesthetic) */
+        .btn-autostop { background: rgba(255, 51, 51, 0.1); color: #ff7373; border: 1px solid rgba(255, 51, 51, 0.3); box-shadow: none; text-shadow: none; }
+
+        /* Muted Cancel Queue Button */
+        .btn-cancel { background: rgba(255, 51, 51, 0.1); color: #ff7373; border: 1px solid rgba(255, 51, 51, 0.3); box-shadow: none; text-shadow: none; }
+
+        .btn-subtext { font-size: 13px; font-family: 'VT323', monospace; opacity: 0.8; letter-spacing: 1px; }
         /* Auth Overlay */
         /* --- DYNAMIC LIVE BETS TAB --- */
         #view-live { background: var(--bg-dark); overflow-y: auto; padding: 15px; gap: 8px; }
@@ -675,6 +694,25 @@
         .live-row.crashed .col-mult { color: var(--red); }
         .live-row.crashed .col-profit { color: var(--text-dim); }
         /* --- LUCKY WHEEL CSS --- */
+        /* Spin Button Animation */
+        #spin-btn {
+            margin-top: 30px; 
+            padding: 15px 30px; 
+            background: var(--cyan); 
+            color: #000;
+            border: none; 
+            border-radius: 6px; 
+            font-family: 'Press Start 2P', monospace; 
+            font-size: 12px; 
+            cursor: pointer; 
+            box-shadow: 0 4px 0 #009926; 
+            transition: all 0.1s ease;
+        }
+
+        #spin-btn:active {
+            transform: translateY(4px); /* Pushes the button down */
+            box-shadow: none; /* Removes the 3D bottom edge so it looks pressed flat */
+        }
         .wheel-container { position: relative; width: 260px; height: 260px; margin: 0 auto; }
         .wheel-pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 10; font-size: 30px; color: var(--yellow); text-shadow: 0 0 10px #000; }
         .wheel { 
@@ -785,7 +823,7 @@
         <!-- Left: Balance -->
         <div class="bal-wrap">
             <div class="bal-label-row">
-                BALANCE (USD)
+                BALANCE (USDT)
                 <button id="refresh-btn" class="arcade-refresh-btn" onclick="checkDeposits()">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square">
                         <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
@@ -1089,7 +1127,7 @@
             <div class="dash-section" id="bonus-section" style="display:none; border-color: var(--yellow); background: rgba(255, 213, 0, 0.05);">
                 <div class="dash-section-title" style="color: var(--yellow);">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                    LOCKED WELCOME BONUS
+                    WELCOME BONUS
                 </div>
                 <div style="font-family:'VT323', monospace; font-size:40px; color:var(--yellow); text-align:center; text-shadow:0 0 10px rgba(255,213,0,0.3); margin-bottom: 5px;">
                     $<span id="locked-bonus-amt">0.00</span>
@@ -1097,7 +1135,7 @@
                 <div style="font-size:14px; color:var(--text-dim); text-align:center; margin-bottom:15px; font-family:'VT323', monospace;">
                     Expires in: <span id="bonus-timer" style="color:var(--red); font-weight: bold;">00:00:00</span>
                 </div>
-                <div style="font-size:12px; color:#fff; text-align:center; line-height:1.4; font-family:'VT323', monospace;">
+                <div style="font-size:14px; color:#fff; text-align:center; line-height:1.4; font-family:'VT323', monospace;">
                     Deposit <span style="color: var(--cyan);">$5.00</span> or more to instantly unlock this cash to your real balance before it expires!
                 </div>
             </div>
@@ -1258,7 +1296,10 @@
         <div id="wheel-modal">
             <!-- Inner wrapper for the pop-in zoom effect -->
             <div id="wheel-modal-content">
-                <div style="font-family:'Press Start 2P'; color:var(--yellow); font-size:16px; margin-bottom: 20px; text-shadow:0 0 10px var(--yellow);">LUCKY SPIN</div>
+                <div style="font-family:'Press Start 2P'; color:var(--yellow); font-size:16px; margin-bottom: 5px; text-shadow:0 0 10px var(--yellow);">LUCKY SPIN</div>
+
+                <!-- NEW WARNING LABEL -->
+                <div style="font-size: 14px; color: #ff732f; font-family: 'VT323', monospace; margin-bottom: 20px;">Use your spins before they expire in 24 hours!</div>
 
                 <div class="wheel-container">
                     <div class="wheel-pointer">▼</div>
@@ -1274,7 +1315,7 @@
                     </div>
                 </div>
 
-                <button id="spin-btn" onclick="spinWheel()" style="margin-top:30px; padding:15px 30px; background:var(--cyan); border:none; border-radius:6px; font-family:'Press Start 2P'; font-size:12px; cursor:pointer; box-shadow:0 4px 0 #009926; transition: 0.2s;">
+                <button id="spin-btn" onclick="spinWheel()">
                     SPIN NOW (<span id="spin-count">0</span>)
                 </button>
 
@@ -1490,34 +1531,26 @@
             playSfx('click');
             betMode = mode;
             autoBetEnabled = false; 
-            nextRoundBetQueued = false; // <-- Clear queue on switch
+            nextRoundBetQueued = false; // Always clear queues when switching tabs
 
             document.getElementById('tab-manual').classList.toggle('active', mode === 'manual');
             document.getElementById('tab-auto').classList.toggle('active', mode === 'auto');
 
-            // Show BET NEXT if the game is active and they switch back to manual
-            if (state === 'WAITING' && !myBet) setBtn('BET');
-            else if (state !== 'WAITING' && !myBet) setBtn('BET_NEXT'); 
+            updateButtonState();
         };
 
-        // Decoupled betting function
         function attemptBet() {
             let a = parseFloat(ui.inpBet.value), o = parseFloat(ui.inpAuto.value);
-            let maxUsdBalance = myBalance; // Balance is exactly USD now
-
-            if(a > maxUsdBalance) {
-                autoBetEnabled = false; // Stop the loop if broke
-                if(state === 'WAITING' && !myBet) setBtn('BET');
+            if(a > myBalance) {
+                autoBetEnabled = false; 
+                updateButtonState(); 
                 return showToast('POOR');
             }
 
-            // FIX: Instantly lock the button UI so it doesn't linger on green
-            if (state === 'WAITING' && betMode === 'manual') {
-                setBtn('WAIT');
-            }
-
+            setBtn('WAIT'); // Visually lock it instantly
             socket.emit('place_bet', { amount: a, autoCashout: o });
         }
+        
         let state = 'WAITING';
         let startTime = 0;
         let currentMult = 1.00;
@@ -1828,8 +1861,6 @@
             }
 
             // --- 5. ROCKET LOGIC ---
-            let rocketX = cw / 2; // Default horizontal center
-
             if (state === 'CRASHED') {
                 for(let i=explosion.length-1; i>=0; i--) {
                     let p = explosion[i];
@@ -1838,6 +1869,7 @@
                     else { 
                         ctx.globalAlpha = p.life; 
                         ctx.fillStyle = p.c; 
+                        // Draw variable sized debris
                         ctx.fillRect(p.x, p.y, p.s || 4, p.s || 4); 
                     }
                 }
@@ -1854,17 +1886,11 @@
                     let easeOut = 1 - Math.pow(1 - launchProgress, 3);
                     rocketY = startY - ((startY - targetY) * easeOut);
 
-                    // --- SMOOTH CINEMATIC SHAKE FIX ---
-                    // Replaced glitchy random jitter with fluid time-based sine waves.
-                    // The shake smoothly intensifies as the multiplier grows, capping safely at 4px.
-                    let shakeMagnitude = Math.min(currentMult * 0.3, 4); 
-
-                    rocketY += Math.sin(Date.now() / 20) * shakeMagnitude; // Vertical engine vibration
-                    rocketX += Math.cos(Date.now() / 15) * (shakeMagnitude * 0.6); // Slight horizontal wobble
+                    // Violent shake at high multipliers
+                    rocketY += currentMult > 3 ? (Math.random()-0.5)*6 : (Math.random()-0.5)*2; 
                 }
 
-                // Pass the smooth rocketX and rocketY coordinates
-                let b = drawSprite(rocketSprite, rocketX, rocketY, 4);
+                let b = drawSprite(rocketSprite, cw/2, rocketY, 4);
                 if(state === 'PLAYING' || Math.random() > 0.5) {
                     createExhaust(b.bx, b.by); createExhaust(b.bx, b.by);
                 }
@@ -1906,15 +1932,57 @@
                 ui.btnSub.innerText='Queue Bet'; 
             }
             if(s==='CANCEL_NEXT') {
-                ui.btn.classList.add('btn-autostop'); 
+                ui.btn.classList.add('btn-cancel'); // <-- Now uses the muted CSS class
                 ui.btnMain.innerText='CANCEL'; 
-                ui.btnSub.innerText='Queued'; 
+                ui.btnSub.innerText='Bet Queued'; 
             }
             // ------------------------------
             if(s==='WAIT') { ui.btn.classList.add('btn-waiting'); ui.btnMain.innerText='WAITING'; ui.btnSub.innerText='Launch Prep'; }
             if(s==='CASH') { ui.btn.classList.add('btn-cashout'); }
             if(s==='DIS') { ui.btn.classList.add('btn-disabled'); ui.btnMain.innerText='IN PROGRESS'; ui.btnSub.innerText='Wait next'; }
             if(s==='WIN') { ui.btn.classList.add('btn-disabled'); ui.btnMain.innerText='SUCCESS'; }
+        }
+
+        // --- MASTER BUTTON STATE RESOLVER ---
+        function updateButtonState() {
+            if (state === 'DISCONNECTED') {
+                setBtn('DIS');
+                ui.btnMain.innerText = 'OFFLINE';
+                ui.btnSub.innerText = 'Server unreachable';
+                return;
+            }
+
+            // 1. Live Bet Priority: If you have money in the air, it MUST be a Cashout button!
+            if (myBet && !myBet.cashedOut && state === 'PLAYING') {
+                return setBtn('CASH');
+            }
+
+            // 2. Crashed Status: If the ship blew up and you lost
+            if (myBet && !myBet.cashedOut && state === 'CRASHED') {
+                setBtn('DIS'); 
+                ui.btnMain.innerText = 'CRASHED'; 
+                ui.btnSub.innerText = 'Bet Lost';
+                return;
+            }
+
+            // 3. Waiting for Launch: You've secured your seat for the next round
+            if (myBet && state === 'WAITING') {
+                return setBtn('WAIT');
+            }
+
+            // 4. Idle / No Active Bet State
+            if (betMode === 'auto') {
+                // In Auto mode, 'BET' automatically morphs between START AUTO and STOP AUTO
+                setBtn('BET'); 
+            } else {
+                // Manual Mode
+                if (state === 'WAITING') {
+                    setBtn('BET'); // Normal "PLACE BET"
+                } else {
+                    // Flying or Crashed, let them queue
+                    setBtn(nextRoundBetQueued ? 'CANCEL_NEXT' : 'BET_NEXT');
+                }
+            }
         }
 
         function showToast(m) {
@@ -2056,7 +2124,10 @@
             }
 
             // --- LUCKY SPIN UI SYNC ---
-            if (p.freeSpins > 0) {
+            const isExpired = p.bonusExpiry && Date.now() > new Date(p.bonusExpiry).getTime();
+
+            // Only show the button if they have spins AND it hasn't expired
+            if (p.freeSpins > 0 && !isExpired) {
                 document.getElementById('header-spin-btn').style.display = 'flex';
                 document.getElementById('header-spin-count').innerText = p.freeSpins;
                 document.getElementById('spin-count').innerText = p.freeSpins;
@@ -2064,7 +2135,8 @@
                 document.getElementById('header-spin-btn').style.display = 'none';
             }
 
-            if (p.lockedBonus > 0 && p.bonusExpiry && Date.now() < new Date(p.bonusExpiry).getTime()) {
+            // Bonus Section display logic
+            if (p.lockedBonus > 0 && !isExpired) {
                 document.getElementById('bonus-section').style.display = 'block';
                 document.getElementById('locked-bonus-amt').innerText = p.lockedBonus.toFixed(2);
                 clearInterval(bonusInterval);
@@ -2273,31 +2345,42 @@
         window.handleAction = () => {
             playSfx('click');
 
-            if(ui.btn.classList.contains('btn-bet')) {
-                // If the game is flying, queue it instead of betting directly
-                if (ui.btnMain.innerText === 'BET NEXT ROUND') {
-                    nextRoundBetQueued = true;
-                    setBtn('CANCEL_NEXT');
-                    showToast('BET QUEUED FOR NEXT ROUND');
-                } else if (betMode === 'manual') {
-                    attemptBet();
-                } else {
-                    autoBetEnabled = true;
-                    attemptBet();
-                    setBtn('BET'); // Trigger UI update to red STOP button
-                }
-            } else if(ui.btn.classList.contains('btn-autostop')) {
-                // If they change their mind and cancel the queue
-                if (ui.btnMain.innerText === 'CANCEL NEXT') {
-                    nextRoundBetQueued = false;
-                    setBtn('BET_NEXT');
-                    showToast('QUEUED BET CANCELLED');
-                } else {
-                    autoBetEnabled = false;
-                    setBtn('BET'); // Revert to START AUTO button
-                }
-            } else if(ui.btn.classList.contains('btn-cashout')) {
+            // 1. CASHOUT ALWAYS TAKES ABSOLUTE PRIORITY
+            if(ui.btn.classList.contains('btn-cashout')) {
                 socket.emit('cash_out');
+                return;
+            }
+
+            // 2. HANDLE AUTO-BET STOPPING
+            if(ui.btn.classList.contains('btn-autostop')) {
+                autoBetEnabled = false;
+                updateButtonState();
+                return;
+            }
+
+            // 3. HANDLE MANUAL QUEUE CANCELLATION
+            if(ui.btn.classList.contains('btn-cancel')) {
+                nextRoundBetQueued = false;
+                updateButtonState();
+                showToast('QUEUED BET CANCELLED');
+                return;
+            }
+
+            // 4. HANDLE BET PLACEMENT / QUEUING
+            if (betMode === 'auto') {
+                autoBetEnabled = true;
+                updateButtonState(); // Morphs instantly to STOP AUTO
+
+                if (state === 'WAITING' && !myBet) attemptBet();
+                else showToast('AUTO-BET ARMED');
+            } else {
+                // Manual Mode
+                if (state === 'WAITING') attemptBet();
+                else {
+                    nextRoundBetQueued = true;
+                    updateButtonState();
+                    showToast('BET QUEUED FOR NEXT ROUND');
+                }
             }
         };
 
@@ -2698,20 +2781,14 @@
             if(state==='PLAYING') { 
                 startTime = Date.now() - (d.elapsed || 0); 
                 ui.stat.innerText=''; 
-                setBtn(myBet ? 'CASH' : (autoBetEnabled ? 'BET' : (nextRoundBetQueued ? 'CANCEL_NEXT' : 'BET_NEXT')));
-            } else if(state === 'CRASHED') {
-                setBtn(myBet ? 'DIS' : (autoBetEnabled ? 'BET' : (nextRoundBetQueued ? 'CANCEL_NEXT' : 'BET_NEXT')));
-            } else { 
-                setBtn(myBet ? 'WAIT' : 'BET'); 
-                if(state==='WAITING') {
-                    waitDuration = d.waitTime || 6000;
-                    waitStartTime = Date.now() - (d.elapsed || 0);
-                    const countdownElement = document.getElementById('countdown-wrap');
-                    if (countdownElement) countdownElement.style.display = 'flex';
-                }
+            } else if(state==='WAITING') {
+                waitDuration = d.waitTime || 6000;
+                waitStartTime = Date.now() - (d.elapsed || 0);
+                const countdownElement = document.getElementById('countdown-wrap');
+                if (countdownElement) countdownElement.style.display = 'flex';
             }
 
-            // Fetch leaderboard immediately in the background on load!
+            updateButtonState();
             socket.emit('request_leaderboard');
         });
 
@@ -2735,17 +2812,16 @@
             setBtn('BET');
             renderLiveTable();
 
-            // --- AUTOMATED BET TRIGGERS & UI FIX ---
-            if (nextRoundBetQueued && betMode === 'manual') {
-                nextRoundBetQueued = false; // Reset the flag
-                setBtn('WAIT'); // Instantly lock UI to 'Waiting...' so it doesn't flash Green
-                attemptBet(); // Fire the queued bet to the server
-            } else {
-                setBtn('BET'); // Normal manual bet state
+        // Clear memory of last round
+            myBet = null; 
+            updateButtonState(); // Fix UI instantly
 
-                if (autoBetEnabled) {
-                    timerWorker.postMessage({ command: 'start', delay: 1000 });
-                }
+            // --- AUTOMATED BET TRIGGERS ---
+            if (nextRoundBetQueued && betMode === 'manual') {
+                nextRoundBetQueued = false; 
+                attemptBet(); 
+            } else if (autoBetEnabled) {
+                timerWorker.postMessage({ command: 'start', delay: 1000 });
             }
         });
 
@@ -2754,12 +2830,11 @@
             if(countdownElement) countdownElement.style.display = 'none';
 
             state = 'PLAYING'; 
-            startTime = Date.now(); // Lock exact local browser time
+            startTime = Date.now(); 
             ui.stat.innerText = '';
             playSfx('launch');
 
-            // FIX: Show "BET NEXT ROUND" instead of "IN PROGRESS"
-            setBtn(myBet ? 'CASH' : (autoBetEnabled ? 'BET' : (nextRoundBetQueued ? 'CANCEL_NEXT' : 'BET_NEXT')));
+            updateButtonState();
         });
 
         socket.on('game_crashed', (d) => {
@@ -2771,49 +2846,38 @@
             renderHistoryBar();
 
             currentSeed = d.seed || '';
-
             state = 'CRASHED';
+
             ui.mult.innerText = d.crashPoint.toFixed(2) + 'x';
             ui.mult.style.color = 'var(--red)'; ui.mult.style.textShadow = '0 0 20px var(--red)';
             ui.stat.innerText = 'Crushed!'; ui.stat.style.color = 'var(--red)';
             playSfx('crash');
 
-            // FIXED: Using the global 'cw' and dynamic 'rocketY' so it explodes exactly on the rocket!
             createExplosion(cw/2, rocketY);
 
-            if(myBet && !myBet.cashedOut) { 
-                setBtn('DIS'); ui.btnMain.innerText='CRASHED'; ui.btnSub.innerText='Bet Lost'; 
-            }
-            // Give players 1.5s to see if they Won or Lost before showing the Queue button.
-            // Spectators (who didn't bet) see it instantly!
+            updateButtonState(); // Instantly turns to red CRASHED state for losers
+
+            // Allow users to queue up again after a 1.5s delay
             setTimeout(() => {
-                if (state === 'CRASHED' && !autoBetEnabled) {
-                    setBtn(nextRoundBetQueued ? 'CANCEL_NEXT' : 'BET_NEXT');
+                if (state === 'CRASHED') {
+                    myBet = null; // Clear their old bet from RAM
+                    updateButtonState(); // Reverts to BET NEXT ROUND or START/STOP AUTO
                 }
             }, myBet ? 1500 : 0);
-            // Surgically turn all remaining active bets gray without lagging the browser
+
             Object.keys(roundBets).forEach(id => {
                 if (!roundBets[id].cashedOut) {
                     const row = document.getElementById('bet-row-' + id);
                     if (row) row.classList.add('crashed');
                 }
-            }); // Updates styling for crashed
-            // ADD THIS LINE to immediately turn "Players Alive" to 0
+            });
             updateLivePotStats(); 
         });
 
         socket.on('bet_accepted', (d) => {
             updateStats(d.stats);
             myBet = { amount: d.amount, cashedOut: false };
-
-            // SECURITY/UI FIX: If the game already started by the time we process this packet, 
-            // instantly turn the button into the active CASH OUT button!
-            if (state === 'PLAYING') {
-                setBtn('CASH');
-            } else {
-                setBtn('WAIT');
-            }
-
+            updateButtonState();
             showToast('BET PLACED');
         });
 
@@ -2830,6 +2894,11 @@
             } else {
                 showToast(`CASHED OUT: ${d.multiplier}x`);
             }
+
+            // After 2.5s, wipe the green success button and revert back to idle UI (so STOP AUTO shows up)
+            setTimeout(() => {
+                updateButtonState();
+            }, 2500);
         });
 
         socket.on('player_bet', (d) => {
@@ -2849,25 +2918,10 @@
                 updateLivePotStats(); 
             }
         });
-        // --- Connection Drop Fail-Safe ---
         socket.on('disconnect', () => {
-            // 1. Instantly freeze the game loop math
             state = 'DISCONNECTED';
-
-            // 2. Turn the UI red to alert the user
-            ui.stat.innerText = 'CONNECTION LOST. RECONNECTING...';
-            ui.stat.style.color = 'var(--red)';
-            ui.mult.style.color = 'var(--red)';
-            ui.mult.style.textShadow = '0 0 20px var(--red)';
-
-            // 3. Immediately kill any Auto-Bet loops
             autoBetEnabled = false;
-
-            // 4. Disable all betting and cashout buttons securely
-            setBtn('DIS');
-            ui.btnMain.innerText = 'OFFLINE';
-            ui.btnSub.innerText = 'Server unreachable';
-
+            updateButtonState();
             showToast('SERVER CONNECTION LOST');
         });
 
@@ -2882,10 +2936,9 @@
 
         socket.on('error_msg', m => {
             showToast('ERROR: '+m);
-            // If the server rejects the bet, reset the button so it isn't stuck on "WAITING"
-            if (state === 'WAITING' && !myBet && betMode === 'manual') {
-                setBtn('BET');
-            }
+            // If the server rejects the bet, force a UI refresh
+            if (myBet) myBet = null;
+            updateButtonState();
         });
         // --- LUCKY SPIN FRONTEND LOGIC ---
         let isSpinning = false;
@@ -2929,14 +2982,10 @@
             isSpinning = true;
             document.getElementById('spin-btn').style.opacity = '0.5';
 
-            // FIX: Calculate absolute target instead of adding relative angles!
             const jitter = Math.random() * 30 - 15; 
-            const segmentAngle = 45; // 360 / 8 segments
-
-            // 1. Figure out how many full 360 degree turns the wheel has ALREADY done
+            const segmentAngle = 45; 
             const baseSpins = Math.floor(currentRotation / 360);
 
-            // 2. Set the absolute ending position: Current Spins + 5 New Spins - Segment Offset
             currentRotation = ((baseSpins + 5) * 360) - (data.segment * segmentAngle) + jitter;
 
             const wheel = document.getElementById('spin-wheel');
@@ -2951,7 +3000,13 @@
                 if (data.amount > 0) {
                     playSfx('cashout');
                     const giftSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="square" style="vertical-align: middle; margin-right: 4px;"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path></svg>`;
-                    showToast(`${giftSvg} WON $${data.amount} BONUS!`);
+
+                    // --- THE FIX: Custom Toast based on unlock status ---
+                    if (data.isInstantlyUnlocked) {
+                        showToast(`${giftSvg} WON $${data.amount} (INSTANTLY CREDITED)!`);
+                    } else {
+                        showToast(`${giftSvg} WON $${data.amount} BONUS!`);
+                    }
                 } else {
                     playSfx('error');
                     const failSvg = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="square" style="vertical-align: middle; margin-right: 4px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
@@ -2962,6 +3017,7 @@
                 if (myPlayer) {
                     myPlayer.freeSpins = data.freeSpins;
                     myPlayer.lockedBonus = data.lockedBonus;
+                    myPlayer.balance = data.newBalance; // Update real top balance!
                     updateStats(myPlayer); // Force visual refresh
 
                     if (data.freeSpins <= 0) {

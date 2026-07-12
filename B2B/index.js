@@ -1022,6 +1022,21 @@ io.on('connection', async (socket) => {
                     return socket.emit('force_logout');
                 }
 
+                // --- AUTO-WIPE EXPIRED WELCOME BONUSES ---
+                let finalFreeSpins = user.free_spins || 0;
+                let finalLockedBonus = parseFloat(user.locked_bonus || 0);
+
+                if (user.bonus_expiry && Date.now() > new Date(user.bonus_expiry).getTime()) {
+                    if (finalFreeSpins > 0 || finalLockedBonus > 0) {
+                        finalFreeSpins = 0;
+                        finalLockedBonus = 0;
+                        // Silently wipe the expired bonuses from the database
+                        supabase.from('users').update({ free_spins: 0, locked_bonus: 0 }).eq('id', userId).then(({error}) => {
+                            if (error) console.error("Failed to wipe expired bonus:", error);
+                        });
+                    }
+                }
+
                 // --- NEW TRON AUTO-HEAL BLOCK ---
                 let finalDepositAddress = user.deposit_address;
                 let finalPrivateKey = user.private_key;
@@ -1062,8 +1077,8 @@ io.on('connection', async (socket) => {
                     actionLock: false,
                     isVerified: user.is_verified || false,
                     // --- NEW LUCKY SPIN FIELDS ---
-                    freeSpins: user.free_spins || 0,
-                    lockedBonus: parseFloat(user.locked_bonus || 0),
+                    freeSpins: finalFreeSpins,
+                    lockedBonus: finalLockedBonus,
                     bonusExpiry: user.bonus_expiry
                 };
             } else {
@@ -1537,48 +1552,66 @@ io.on('connection', async (socket) => {
             }
         });
 
-        // --- BC.GAME STYLE WELCOME WHEEL ---
-        socket.on('spin_wheel', async () => {
-            const p = players[userId];
-            if (!p || p.actionLock) return;
-            if (p.freeSpins <= 0) return socket.emit('error_msg', 'No free spins left.');
+            // --- BC.GAME STYLE WELCOME WHEEL ---
+            socket.on('spin_wheel', async () => {
+                const p = players[userId];
+                if (!p || p.actionLock) return;
+                if (p.freeSpins <= 0) return socket.emit('error_msg', 'No free spins left.');
 
-            // Check if 24-hour timer expired
-            if (p.bonusExpiry && Date.now() > new Date(p.bonusExpiry).getTime()) {
-                return socket.emit('error_msg', 'Your bonus period has expired!');
-            }
+                // Check if 24-hour timer expired
+                if (p.bonusExpiry && Date.now() > new Date(p.bonusExpiry).getTime()) {
+                    return socket.emit('error_msg', 'Your bonus period has expired!');
+                }
 
-            p.actionLock = true;
-            try {
-                const rand = Math.random();
-                let wonAmount = 0;
-                let segmentIndex = 0;
+                p.actionLock = true;
+                try {
+                    const rand = Math.random();
+                    let wonAmount = 0;
+                    let segmentIndex = 0;
 
-                // Casino Math: 8 Segments (0, $1, 0, $5, 0, $10, 0, $50)
-                if (rand < 0.60) { wonAmount = 0; segmentIndex = [0, 2, 4, 6][Math.floor(Math.random()*4)]; }
-                else if (rand < 0.85) { wonAmount = 1; segmentIndex = 1; }
-                else if (rand < 0.95) { wonAmount = 5; segmentIndex = 3; }
-                else if (rand < 0.99) { wonAmount = 10; segmentIndex = 5; }
-                else { wonAmount = 50; segmentIndex = 7; } // Rare 1% chance for the $50 hit!
+                    // Casino Math: 8 Segments (0, $1, 0, $5, 0, $10, 0, $50)
+                    if (rand < 0.60) { wonAmount = 0; segmentIndex = [0, 2, 4, 6][Math.floor(Math.random()*4)]; }
+                    else if (rand < 0.85) { wonAmount = 1; segmentIndex = 1; }
+                    else if (rand < 0.95) { wonAmount = 5; segmentIndex = 3; }
+                    else if (rand < 0.99) { wonAmount = 10; segmentIndex = 5; }
+                    else { wonAmount = 50; segmentIndex = 7; } // Rare 1% chance for the $50 hit!
 
-                p.freeSpins -= 1;
-                p.lockedBonus = safeAdd(p.lockedBonus, wonAmount);
+                    p.freeSpins -= 1;
+                    let isInstantlyUnlocked = false;
 
-                // Save result to Database securely
-                await supabase.from('users').update({
-                    free_spins: p.freeSpins,
-                    locked_bonus: p.lockedBonus
-                }).eq('id', userId);
+                    // --- THE FIX: Check if they ALREADY deposited $5.00 or more ---
+                    if (p.totalDeposited >= 5.00) {
+                        // Send it straight to their real playable balance!
+                        p.balance = safeAdd(p.balance, wonAmount);
+                        isInstantlyUnlocked = true;
+                    } else {
+                        // They haven't deposited yet, so lock it in the vault
+                        p.lockedBonus = safeAdd(p.lockedBonus, wonAmount);
+                    }
 
-                // Tell the frontend exactly where to animate the wheel to
-                socket.emit('spin_result', { amount: wonAmount, segment: segmentIndex, freeSpins: p.freeSpins, lockedBonus: p.lockedBonus });
-            } catch (err) {
-                console.error("Spin error:", err);
-                socket.emit('error_msg', 'Server error. Try again.');
-            } finally {
-                p.actionLock = false;
-            }
-        });
+                    // Save result to Database securely
+                    await supabase.from('users').update({
+                        free_spins: p.freeSpins,
+                        locked_bonus: p.lockedBonus,
+                        balance: p.balance // Ensure the new real balance is saved if unlocked
+                    }).eq('id', userId);
+
+                    // Tell the frontend exactly what happened
+                    socket.emit('spin_result', { 
+                        amount: wonAmount, 
+                        segment: segmentIndex, 
+                        freeSpins: p.freeSpins, 
+                        lockedBonus: p.lockedBonus,
+                        newBalance: p.balance,
+                        isInstantlyUnlocked: isInstantlyUnlocked
+                    });
+                } catch (err) {
+                    console.error("Spin error:", err);
+                    socket.emit('error_msg', 'Server error. Try again.');
+                } finally {
+                    p.actionLock = false;
+                }
+            });
 
         socket.on('disconnect', () => { 
             // Instantly tell everyone a device disconnected

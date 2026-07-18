@@ -659,6 +659,13 @@
             margin-bottom: 4px;
         }
 
+        /* BC.GAME Style Table Tabs */
+        .table-tabs { display: flex; gap: 15px; border-bottom: 1px dashed #1a1c29; padding-bottom: 8px; margin-bottom: 8px; }
+        .tt-tab { font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); cursor: pointer; transition: 0.2s; padding-bottom: 4px; border-bottom: 2px solid transparent; }
+        .tt-tab:hover { color: #fff; }
+        .tt-tab.active { color: var(--cyan); border-bottom: 2px solid var(--cyan); }
+        .tt-empty { text-align: center; padding: 20px; font-family: 'VT323', monospace; font-size: 16px; color: var(--text-dim); }
+
         /* Column Width Formatting */
         .col-user { flex: 2; display: flex; align-items: center; gap: 6px; overflow: hidden; } 
         .col-bet { flex: 1; text-align: right; } 
@@ -998,9 +1005,17 @@
                         <div class="rs-val" id="pot-top" style="color: var(--yellow); text-shadow: 0 0 8px rgba(255, 213, 0, 0.4);">+$0.00</div>
                     </div>
                 </div>
+                
+
+                <!-- NEW: BC.GAME Style Switcher -->
+                <div class="table-tabs">
+                    <div class="tt-tab active" id="tt-all" onclick="setTableTab('all')">ALL BETS</div>
+                    <div class="tt-tab" id="tt-mine" onclick="setTableTab('mine')">MY BETS</div>
+                </div>
 
                 <div class="table-header">
-                    <div class="col-user">PLAYER</div>
+                    <!-- Added ID so we can dynamically change "PLAYER" to "TIME" -->
+                    <div class="col-user" id="header-col-1">PLAYER</div> 
                     <div class="col-bet">BET($)</div>
                     <div class="col-mult">MULT</div>
                     <div class="col-profit">PROFIT($)</div>
@@ -1096,6 +1111,17 @@
                 <div class="dash-section-title">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     REWARDS VAULT
+                </div>
+
+                <!-- NEW: Affiliate Tier Progress Bar -->
+                <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; border: 1px solid #1a1c29; margin-bottom: 15px;">
+                    <div style="display: flex; justify-content: space-between; font-family: 'Press Start 2P', monospace; font-size: 8px; margin-bottom: 8px;">
+                        <span id="aff-tier-name" style="color: var(--cyan);">LVL 1 AFFILIATE (0.5%)</span>
+                        <span id="aff-tier-next" style="color: var(--text-dim);">NEXT: 11 INVITES</span>
+                    </div>
+                    <div style="width: 100%; height: 4px; background: #07070b; border-radius: 2px; overflow: hidden; border: 1px solid #1a1c29;">
+                        <div id="aff-progress-fill" style="height: 100%; width: 0%; background: var(--cyan); transition: width 0.5s;"></div>
+                    </div>
                 </div>
 
                 <div class="compact-action-row" style="margin-bottom: 10px;">
@@ -1569,6 +1595,19 @@
             document.getElementById('show-more-btn').innerText = showingAllBets ? 'SHOW TOP 10' : 'SHOW ALL BETS';
             renderLiveTable();
         };
+        let activeTableTab = 'all';
+        let myBetsHistory = [];
+
+        window.setTableTab = (tab) => {
+            playSfx('click');
+            activeTableTab = tab;
+            document.getElementById('tt-all').classList.toggle('active', tab === 'all');
+            document.getElementById('tt-mine').classList.toggle('active', tab === 'mine');
+
+            // Swap out the column header
+            document.getElementById('header-col-1').innerText = tab === 'all' ? 'PLAYER' : 'TIME';
+            renderLiveTable();
+        };
         // -----------------------
         let currentHash = ''; // <-- ADD THIS LINE!
         let currentSeed = '';
@@ -1886,8 +1925,7 @@
                     let easeOut = 1 - Math.pow(1 - launchProgress, 3);
                     rocketY = startY - ((startY - targetY) * easeOut);
 
-                    // Violent shake at high multipliers
-                    rocketY += currentMult > 3 ? (Math.random()-0.5)*6 : (Math.random()-0.5)*2; 
+                    // (Shake logic removed for a perfectly smooth cinematic flight)
                 }
 
                 let b = drawSprite(rocketSprite, cw/2, rocketY, 4);
@@ -2102,6 +2140,39 @@
             const availableRakebackUsd = availableRakebackSol; // 1:1
             document.getElementById('vip-rakeback-val').innerText = `+$${availableRakebackUsd.toFixed(2)}`;
 
+            // --- NEW: Affiliate Tier Progress Math ---
+            let affRate = 0.50;
+            let affName = "LVL 1 AFFILIATE";
+            let affColor = "var(--cyan)";
+            let affNext = 11;
+            let affProgress = 0;
+
+            if (p.totalReferred >= 51) {
+                affRate = 1.25;
+                affName = "VIP PARTNER";
+                affColor = "var(--magenta)";
+                affNext = null;
+                affProgress = 100;
+            } else if (p.totalReferred >= 11) {
+                affRate = 0.75;
+                affName = "LVL 2 AFFILIATE";
+                affColor = "var(--yellow)";
+                affNext = 51;
+                affProgress = ((p.totalReferred - 11) / 40) * 100;
+            } else {
+                affProgress = (p.totalReferred / 11) * 100;
+            }
+
+            const affTierNameEl = document.getElementById('aff-tier-name');
+            if (affTierNameEl) {
+                affTierNameEl.innerText = `${affName} (${affRate}%)`;
+                affTierNameEl.style.color = affColor;
+                document.getElementById('aff-tier-next').innerText = affNext ? `NEXT: ${affNext} INVITES` : `MAX LEVEL`;
+                document.getElementById('aff-progress-fill').style.width = `${Math.min(affProgress, 100)}%`;
+                document.getElementById('aff-progress-fill').style.background = affColor;
+                document.getElementById('aff-progress-fill').style.boxShadow = `0 0 8px ${affColor}`;
+            }
+
             // --- Affiliate Sync ---
             const baseUrl = window.location.origin + window.location.pathname;
             document.getElementById('ref-link-display').value = `${baseUrl}?ref=${p.username}`;
@@ -2230,41 +2301,75 @@
             }
         }
 
-        // Only runs once per round to reset the table cleanly
+        // --- Smart Rendering Cache ---
+        let lastMineRenderTime = 0;
+        let lastMineRenderShowAll = null;
+
         function renderLiveTable() {
-            ui.liveBody.innerHTML = ''; 
+            if (activeTableTab === 'all') {
+                // For 'All Bets', we wipe and redraw continuously for real-time live action
+                ui.liveBody.innerHTML = ''; 
 
-            // 1. Convert to array and sort by bet amount descending
-            let betsArray = Object.entries(roundBets).map(([id, b]) => ({ id, ...b }));
-            betsArray.sort((a, b) => (b.amount || b.amountUsd || 0) - (a.amount || a.amountUsd || 0));
+                let betsArray = Object.entries(roundBets).map(([id, b]) => ({ id, ...b }));
+                betsArray.sort((a, b) => (b.amount || b.amountUsd || 0) - (a.amount || a.amountUsd || 0));
 
-            let renderList = betsArray;
-
-            // 2. Slice to top 10 if collapsed
-            if (!showingAllBets) {
-                renderList = betsArray.slice(0, 10);
-
-                // 3. Guarantee YOUR bet is always shown, even if you aren't in the top 10
-                if (myPlayer && roundBets[myPlayer.id]) {
-                    const myBetInTop10 = renderList.find(b => b.id === myPlayer.id);
-                    if (!myBetInTop10) {
+                let renderList = showingAllBets ? betsArray : betsArray.slice(0, 10);
+                if (!showingAllBets && myPlayer && roundBets[myPlayer.id]) {
+                    if (!renderList.find(b => b.id === myPlayer.id)) {
                         renderList.push({ id: myPlayer.id, ...roundBets[myPlayer.id] });
                     }
                 }
+                renderList.forEach(b => addOrUpdateBetRow(b.id, b, true));
+
+                const btnContainer = document.getElementById('show-more-container');
+                if (btnContainer) btnContainer.style.display = betsArray.length > 10 ? 'block' : 'none';
+
+                // Reset cache so it forcefully redraws next time we click the My Bets tab
+                lastMineRenderTime = 0;
+            } else {
+                // --- MY BETS TAB (SMART RENDER) ---
+                const newestBetTime = myBetsHistory.length > 0 ? myBetsHistory[0].time : 0;
+
+                // ONLY wipe and redraw the DOM if your personal history actually received a new bet
+                if (lastMineRenderTime !== newestBetTime || lastMineRenderShowAll !== showingAllBets) {
+                    ui.liveBody.innerHTML = ''; 
+
+                    if (myBetsHistory.length === 0) {
+                        ui.liveBody.innerHTML = '<div class="tt-empty">No recent bets found.</div>';
+                        document.getElementById('show-more-container').style.display = 'none';
+                    } else {
+                        let renderList = showingAllBets ? myBetsHistory : myBetsHistory.slice(0, 10);
+
+                        renderList.forEach((b) => {
+                            let isWin = b.payout > 0;
+                            let multText = isWin ? `<span class="mult-badge">${b.mult.toFixed(2)}x</span>` : `<span style="color:var(--red)">0.00x</span>`;
+                            let profitStr = isWin ? `+$${(b.payout - b.bet).toFixed(2)}` : `-$${b.bet.toFixed(2)}`;
+                            let localTime = new Date(b.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                            // Removed the 'fadeIn' animation entirely so the list looks perfectly static and professional
+                            let html = `
+                                <div class="live-row ${isWin ? 'cashed' : 'crashed'}" style="padding: 8px 15px;">
+                                    <div class="col-user" style="color:var(--text-dim); font-size:16px;">${localTime}</div>
+                                    <div class="col-bet">$${b.bet.toFixed(2)}</div>
+                                    <div class="col-mult">${multText}</div>
+                                    <div class="col-profit" style="color: ${isWin ? 'var(--green)' : 'var(--text-dim)'}">${profitStr}</div>
+                                </div>
+                            `;
+                            ui.liveBody.insertAdjacentHTML('beforeend', html);
+                        });
+
+                        const btnContainer = document.getElementById('show-more-container');
+                        if (btnContainer) btnContainer.style.display = myBetsHistory.length > 10 ? 'block' : 'none';
+                    }
+
+                    // Update cache so it ignores all the background bot bets
+                    lastMineRenderTime = newestBetTime;
+                    lastMineRenderShowAll = showingAllBets;
+                }
             }
 
-            // 4. Render only the allowed list
-            renderList.forEach(b => {
-                addOrUpdateBetRow(b.id, b, true); // forceAppend = true
-            });
-
-            // 5. Show/Hide the "Show More" button dynamically
-            const btnContainer = document.getElementById('show-more-container');
-            if (btnContainer) {
-                btnContainer.style.display = betsArray.length > 10 ? 'block' : 'none';
-            }
-
-            updateLivePotStats();
+            // Always update the Total Pot numbers at the top, regardless of which tab is open
+            updateLivePotStats(); 
         }
 
         // Quick Controls
@@ -2735,6 +2840,7 @@
 
         // Update your socket.on('init') to look like this:
         socket.on('init', (d) => {
+            socket.emit('request_my_bets'); // Fetch personal history on load
             // --- HIDE THE LOADING SCREEN ---
             const loader = document.getElementById('loading-overlay');
             if (loader) {
@@ -2854,6 +2960,20 @@
             playSfx('crash');
 
             createExplosion(cw/2, rocketY);
+            
+            // Instantly push this round's bet to the local history Array!
+            if (myBet) {
+                myBetsHistory.unshift({
+                    time: Date.now(),
+                    bet: myBet.amount,
+                    mult: myBet.cashedOut ? myBet.cashoutMult : 0,
+                    payout: myBet.cashedOut ? (myBet.amount * myBet.cashoutMult) : 0
+                });
+                if (myBetsHistory.length > 50) myBetsHistory.pop();
+            }
+
+            // Re-render instantly to update the tabs
+            if (activeTableTab === 'mine') renderLiveTable();
 
             updateButtonState(); // Instantly turns to red CRASHED state for losers
 
@@ -2883,6 +3003,7 @@
 
         socket.on('cashout_success', (d) => {
             if(myBet) myBet.cashedOut = true;
+            myBet.cashoutMult = parseFloat(d.multiplier); // <-- Add this line
             updateStats(d.stats);
             setBtn('WIN'); ui.btnSub.innerText = '+'+d.winAmount;
             playSfx('cashout');
@@ -2939,6 +3060,10 @@
             // If the server rejects the bet, force a UI refresh
             if (myBet) myBet = null;
             updateButtonState();
+        });
+        socket.on('my_bets_data', (data) => {
+            myBetsHistory = data;
+            if (activeTableTab === 'mine') renderLiveTable();
         });
         // --- LUCKY SPIN FRONTEND LOGIC ---
         let isSpinning = false;

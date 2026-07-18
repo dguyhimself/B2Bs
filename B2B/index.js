@@ -182,7 +182,7 @@ const players = {};
 let activeBets = {}; 
 
 // --- Affiliate Commission Batcher ---
-const pendingCommissions = {};
+const pendingAffiliateWagers = {}; // Tracks raw wager volume, not pennies!
 
 // --- BOT SYSTEM (FAKE USERS & ACTIVITY) ---
 const botAdjectives = [
@@ -629,10 +629,22 @@ async function crashGame() {
 
     if (crashHistory.length > 50) crashHistory.shift(); // Keep last 50 rounds
 
-    // 1. Gather all losing players into a list and update server RAM instantly
+    // 1. Gather all players into a list for history logging, and update RAM for losers
     const lossUpdates = [];
+    const betsToLog = []; // NEW: Array for background database insertion
+
     for(const id in activeBets) {
         if (activeBets[id].isBot) continue; // SECURITY: Ignore bots so they don't touch the DB!
+
+        // Format the bet for the permanent database history
+        betsToLog.push({
+            user_id: id,
+            username: activeBets[id].username,
+            bet_amount: activeBets[id].amountUsd,
+            crash_point: currentCrashPoint,
+            cashout_mult: activeBets[id].cashedOut ? activeBets[id].cashoutMult : null,
+            payout: activeBets[id].cashedOut ? safeMul(activeBets[id].amountUsd, activeBets[id].cashoutMult) : 0
+        });
 
         if(!activeBets[id].cashedOut && players[id]) {
             // SECURE MATH
@@ -686,9 +698,16 @@ async function crashGame() {
             console.log(`[GC] Post-round sweep cleared offline user: ${pid}`);
         }
     }
+    // --- FIRE-AND-FORGET BET HISTORY LOGGING ---
+    // Pushes the data to Supabase in the background so it never slows down the game
+    if (betsToLog.length > 0) {
+        supabase.from('bet_history').insert(betsToLog).then(({error}) => {
+            if (error) console.error("Bet History DB Error:", error);
+        });
+    }
 
     // Start the next round
-    setTimeout(startWaiting, 4000); 
+    setTimeout(startWaiting, 4000);
 }
 
 // Add `reason` as the third parameter
@@ -770,6 +789,30 @@ io.on('connection', async (socket) => {
     // Respond to Ping Requests instantly with the exact timestamp received
     socket.on('ping_req', (timestamp) => {
         socket.emit('pong_res', timestamp);
+    });
+
+    // --- Fetch Personal Bet History ---
+    socket.on('request_my_bets', async () => {
+        if (!userId) return;
+        try {
+            // Fetch the last 50 bets efficiently
+            const { data, error } = await supabase
+                .from('bet_history')
+                .select('created_at, bet_amount, cashout_mult, payout')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+                .limit(50);
+
+            if (data && !error) {
+                const formatted = data.map(b => ({
+                    time: b.created_at,
+                    bet: parseFloat(b.bet_amount),
+                    mult: b.cashout_mult ? parseFloat(b.cashout_mult) : 0,
+                    payout: parseFloat(b.payout)
+                }));
+                socket.emit('my_bets_data', formatted);
+            }
+        } catch (err) { console.error("History fetch error:", err); }
     });
 
     // --- RESEND VERIFICATION EMAIL ---
@@ -943,49 +986,53 @@ io.on('connection', async (socket) => {
     socket.on('login', async (data) => {
         const ip = getClientIp(socket);
         const now = Date.now();
-    
+
         // 1. Check if this IP is currently locked out
         if (!ipLoginFails[ip]) ipLoginFails[ip] = { count: 0, lockoutUntil: 0 };
-    
+
         if (now < ipLoginFails[ip].lockoutUntil) {
             const minsLeft = Math.ceil((ipLoginFails[ip].lockoutUntil - now) / 60000);
             return socket.emit('auth_error', `LOCKED OUT. TRY AGAIN IN ${minsLeft} MINS.`);
         }
-    
+
         // SECURITY 1: Strict Type Checking
         if (!data || typeof data.username !== 'string' || typeof data.password !== 'string') {
             return socket.emit('auth_error', 'Invalid input format.');
         }
 
-        // ---> ADD THESE TWO MISSING LINES HERE <---
-        const username = data.username.trim();
+        const identifier = data.username.trim(); // We call it identifier now (can be user or email)
         const password = data.password.trim();
 
-        // SECURITY 2: Strict Length Constraints
-        if (username.length < 3 || username.length > 12 || password.length < 5 || password.length > 64) {
-            return handleFailedLogin(ip, socket); // Use the helper below
+        // SECURITY 2: Strict Length Constraints (Increased to 255 to allow full email addresses!)
+        if (identifier.length < 3 || identifier.length > 255 || password.length < 5 || password.length > 64) {
+            return handleFailedLogin(ip, socket);
         }
-    
-        const { data: user, error } = await supabase
-            .from('users')
-            .select('id, password')
-            .eq('username', username.toUpperCase())
-            .single();
-    
+
+        // 3. Smart Query: Detect if it's an email or username
+        let query = supabase.from('users').select('id, password');
+
+        if (identifier.includes('@')) {
+            query = query.eq('email', identifier.toLowerCase());
+        } else {
+            query = query.eq('username', identifier.toUpperCase());
+        }
+
+        const { data: user, error } = await query.single();
+
         if (error || !user) {
             return handleFailedLogin(ip, socket);
         }
-    
+
         // SECURE & NON-BLOCKING: Await the comparison
         const isValidPassword = await bcrypt.compare(password, user.password);
-    
+
         if (!isValidPassword) {
             return handleFailedLogin(ip, socket);
         }
-    
+
         // IF SUCCESSFUL: Reset their fail count and let them in!
         ipLoginFails[ip].count = 0; 
-    
+
         const secureToken = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, { expiresIn: '30d' });
         socket.emit('auth_success', secureToken);
     });
@@ -1341,10 +1388,10 @@ io.on('connection', async (socket) => {
                 p.lifetimeWagered = safeAdd(p.lifetimeWagered, amountUsd);
                 p.totalBets += 1;
 
-                // --- RESTORED: AFFILIATE COMMISSION ---
+                // --- UPGRADED: AFFILIATE TIER SYSTEM ---
+                // We ONLY add it here. No rollback here!
                 if (p.referred_by) {
-                    const commissionUsd = safeMul(amountUsd, 0.001); // 0.1% of total bet
-                    pendingCommissions[p.referred_by] = safeAdd(pendingCommissions[p.referred_by] || 0, commissionUsd);
+                    pendingAffiliateWagers[p.referred_by] = safeAdd(pendingAffiliateWagers[p.referred_by] || 0, amountUsd);
                 }
 
                 // SECURITY: We MUST `await` this database call. 
@@ -1358,7 +1405,6 @@ io.on('connection', async (socket) => {
                 if (error) throw error; // If DB fails, trigger the catch block
 
                 // --- SECURITY: LATE BET RACE CONDITION FIX ---
-                // If the game started or crashed while Supabase was saving the data, reject the bet!
                 if (currentState !== GAME_STATE.WAITING) {
                     throw new Error("Round started before database sync finished.");
                 }
@@ -1370,10 +1416,10 @@ io.on('connection', async (socket) => {
                     autoCashout: autoCashout,
                     cashedOut: false,
                     cashoutMult: null,
-                    wagered: p.lifetimeWagered // <-- ADD THIS LINE!
+                    wagered: p.lifetimeWagered 
                 };
 
-                // SECURE: Broadcast the bet acceptance to ALL tabs/devices owned by this user
+                // SECURE: Broadcast the bet acceptance to ALL tabs/devices
                 io.to(userId).emit('bet_accepted', { balance: p.balance, amount: amountUsd, stats: p });
                 io.emit('player_bet', { 
                     id: userId, 
@@ -1390,10 +1436,10 @@ io.on('connection', async (socket) => {
                 p.lifetimeWagered = safeSub(p.lifetimeWagered, amountUsd);
                 p.totalBets = Math.max(0, p.totalBets - 1);
 
-                // Rollback Affiliate
+                // --- THE PROPER ROLLBACK LOCATION ---
+                // If the bet failed, we subtract the wager volume back out of the batcher
                 if (p.referred_by) {
-                    const commissionUsd = safeMul(amountUsd, 0.001);
-                    pendingCommissions[p.referred_by] = Math.max(0, safeSub(pendingCommissions[p.referred_by] || 0, commissionUsd));
+                    pendingAffiliateWagers[p.referred_by] = Math.max(0, safeSub(pendingAffiliateWagers[p.referred_by] || 0, amountUsd));
                 }
 
                 // Push rollback to DB (fire and forget to unblock user quickly)
@@ -1644,20 +1690,30 @@ io.on('connection', async (socket) => {
 
 // --- Affiliate Commission Batch Loop ---
 // Runs every 15 seconds to bulk-update offline/online affiliate balances safely
-// --- Affiliate Commission Batch Loop ---
+// --- Affiliate Wager Batch Loop (Tiered) ---
+// Runs every 15 seconds to bulk-calculate tiers and update commissions
 setInterval(async () => {
-    const refsToUpdate = Object.keys(pendingCommissions);
+    const refsToUpdate = Object.keys(pendingAffiliateWagers);
     if (refsToUpdate.length === 0) return;
 
+    // The Tier System Math
+    function getAffiliateRate(totalReferred) {
+        if (totalReferred >= 51) return 0.0125; // 1.25% (VIP Partner)
+        if (totalReferred >= 11) return 0.0075; // 0.75% (Level 2)
+        return 0.005;                           // 0.50% (Level 1 - Base 5x boost!)
+    }
+
     for (const refId of refsToUpdate) {
-        const amount = pendingCommissions[refId];
-        delete pendingCommissions[refId]; 
+        const wagerVol = pendingAffiliateWagers[refId];
+        delete pendingAffiliateWagers[refId]; 
 
         try {
             if (players[refId]) {
-                // CRITICAL FIX: If user is online, RAM is the absolute source of truth.
-                // Do the math in RAM first, then explicitly tell the DB what the new total is.
-                players[refId].affiliateEarned = safeAdd(players[refId].affiliateEarned, amount);
+                // Sponsor is Online: Use RAM to calculate tier
+                const rate = getAffiliateRate(players[refId].totalReferred);
+                const commission = safeMul(wagerVol, rate);
+
+                players[refId].affiliateEarned = safeAdd(players[refId].affiliateEarned, commission);
 
                 await supabase.from('users').update({ 
                     affiliate_earned: players[refId].affiliateEarned 
@@ -1665,16 +1721,19 @@ setInterval(async () => {
 
                 io.to(refId).emit('stats_update', players[refId]);
             } else {
-                // If user is offline, it is safe to pull the DB value, do the math, and write it back.
-                const { data } = await supabase.from('users').select('affiliate_earned').eq('id', refId).single();
+                // Sponsor is Offline: Pull DB total_referred to calculate tier
+                const { data } = await supabase.from('users').select('affiliate_earned, total_referred').eq('id', refId).single();
                 if (data) {
-                    const newEarned = safeAdd(data.affiliate_earned, amount);
+                    const rate = getAffiliateRate(data.total_referred);
+                    const commission = safeMul(wagerVol, rate);
+                    const newEarned = safeAdd(data.affiliate_earned, commission);
                     await supabase.from('users').update({ affiliate_earned: newEarned }).eq('id', refId);
                 }
             }
         } catch (err) {
             console.error("Affiliate Batch Error:", err);
-            pendingCommissions[refId] = safeAdd(pendingCommissions[refId] || 0, amount);
+            // Refund the volume back into the queue if DB fails
+            pendingAffiliateWagers[refId] = safeAdd(pendingAffiliateWagers[refId] || 0, wagerVol);
         }
     }
 }, 15000);

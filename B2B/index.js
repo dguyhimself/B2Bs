@@ -643,7 +643,9 @@ async function crashGame() {
             bet_amount: activeBets[id].amountUsd,
             crash_point: currentCrashPoint,
             cashout_mult: activeBets[id].cashedOut ? activeBets[id].cashoutMult : null,
-            payout: activeBets[id].cashedOut ? safeMul(activeBets[id].amountUsd, activeBets[id].cashoutMult) : 0
+            payout: activeBets[id].cashedOut ? safeMul(activeBets[id].amountUsd, activeBets[id].cashoutMult) : 0,
+            // --- THE FIX: Force Node to inject the exact UTC time ---
+            created_at: new Date().toISOString() 
         });
 
         if(!activeBets[id].cashedOut && players[id]) {
@@ -804,12 +806,21 @@ io.on('connection', async (socket) => {
                 .limit(50);
 
             if (data && !error) {
-                const formatted = data.map(b => ({
-                    time: b.created_at,
-                    bet: parseFloat(b.bet_amount),
-                    mult: b.cashout_mult ? parseFloat(b.cashout_mult) : 0,
-                    payout: parseFloat(b.payout)
-                }));
+                const formatted = data.map(b => {
+                    // FIX: Ensure Supabase strings are strictly treated as UTC if they lack a 'Z'
+                    let dateStr = b.created_at;
+                    if (!dateStr.endsWith('Z') && !dateStr.includes('+')) {
+                        dateStr += 'Z'; 
+                    }
+
+                    return {
+                        // Convert directly to universal milliseconds to match Date.now() flawlessly
+                        time: new Date(dateStr).getTime(), 
+                        bet: parseFloat(b.bet_amount),
+                        mult: b.cashout_mult ? parseFloat(b.cashout_mult) : 0,
+                        payout: parseFloat(b.payout)
+                    };
+                });
                 socket.emit('my_bets_data', formatted);
             }
         } catch (err) { console.error("History fetch error:", err); }
@@ -1048,6 +1059,24 @@ io.on('connection', async (socket) => {
     
         return socket.emit('auth_error', 'INVALID USERNAME OR PASSWORD');
     }
+
+    // --- High Rollers Leaderboard ---
+    socket.on('request_leaderboard', async () => {
+        try {
+            // Fetch top 10 users ordered by net_profit (descending)
+            const { data, error } = await supabase
+                .from('users')
+                .select('username, net_profit')
+                .order('net_profit', { ascending: false })
+                .limit(10);
+
+            if (!error && data) {
+                socket.emit('leaderboard_data', data);
+            }
+        } catch (err) {
+            console.error("Leaderboard fetch error:", err);
+        }
+    });
 
         // --- SPECTATOR MODE (If not logged in) ---
         if (!userId) {
@@ -1578,24 +1607,6 @@ io.on('connection', async (socket) => {
             if (chatHistory.length > 50) chatHistory.shift(); 
 
             io.emit('chat_message', msgData);
-        });
-
-        // --- High Rollers Leaderboard ---
-        socket.on('request_leaderboard', async () => {
-            try {
-                // Fetch top 10 users ordered by net_profit (descending)
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('username, net_profit')
-                    .order('net_profit', { ascending: false })
-                    .limit(10);
-
-                if (!error && data) {
-                    socket.emit('leaderboard_data', data);
-                }
-            } catch (err) {
-                console.error("Leaderboard fetch error:", err);
-            }
         });
 
             // --- BC.GAME STYLE WELCOME WHEEL ---

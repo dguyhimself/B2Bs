@@ -1301,7 +1301,7 @@
 
             <div id="chat-input-area">
                 <div id="chat-input-wrapper">
-                    <input type="text" id="chat-input" placeholder="Type message..." maxlength="80" autocomplete="off" onkeypress="if(event.key === 'Enter') sendChat()">
+                    <input type="text" id="chat-input" placeholder="Type message..." maxlength="80" autocomplete="off" onkeypress="if(event.key === 'Enter') sendChat()" onclick="requireAuth()">
                 </div>
                 <button id="chat-send-btn" onclick="sendChat()" title="Send">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none">
@@ -1396,14 +1396,22 @@
     </div>
 
     <script>
+
         // --- Session Management ---
         let sessionToken = localStorage.getItem('arcade_token');
+        let isGuest = !sessionToken;
 
-        // If they don't have a token, instantly redirect them to the secure Auth page
-        if (!sessionToken) {
-            // FIX: Pass the '?ref=...' parameter forward to the auth page!
-            window.location.href = '/auth' + window.location.search;
-        }
+        // --- AUTH INTERCEPTOR ---
+        window.requireAuth = () => {
+            if (isGuest) {
+                playSfx('error');
+                // Pass their referral code to the auth page if they have one!
+                window.location.href = '/auth' + window.location.search;
+                return true; 
+            }
+            return false;
+        };
+
 
         // Connect to server WITH token
         const socket = io({ auth: { token: sessionToken } });
@@ -1479,6 +1487,7 @@
         });
 
         function checkDeposits() {
+            if (requireAuth()) return;
             playSfx('click');
             const btn = document.getElementById('refresh-btn');
             if (btn) btn.classList.add('refreshing-active');
@@ -1599,6 +1608,8 @@
         let myBetsHistory = [];
 
         window.setTableTab = (tab) => {
+            // Block My Bets Tab for Guests
+            if (tab === 'mine' && requireAuth()) return;
             playSfx('click');
             activeTableTab = tab;
             document.getElementById('tt-all').classList.toggle('active', tab === 'all');
@@ -1891,12 +1902,34 @@
                 ctx.fillStyle = '#00f3ff';
                 ctx.fillRect(cw/2 - 40, ch - 25 + earthY, 80, 4);
 
-                // Planet Curvature
-                ctx.shadowBlur = 30; ctx.shadowColor = '#00f3ff';
-                ctx.beginPath(); ctx.arc(cw/2, ch + 250 + earthY, cw * 1.5, Math.PI, 0);
-                ctx.fillStyle = '#050508'; ctx.fill(); 
-                ctx.lineWidth = 2; ctx.strokeStyle = '#00f3ff'; ctx.stroke();
-                ctx.shadowBlur = 0;
+                // --- LAG FIX & UI UPGRADE: Planet Curvature ---
+                // Removed shadowBlur because it causes massive GPU lag spikes on devices.
+                const earthRadius = cw * 1.5;
+                const earthCenterY = ch + 250 + earthY;
+
+                ctx.beginPath(); 
+                ctx.arc(cw/2, earthCenterY, earthRadius, Math.PI, 0);
+
+                // Beautiful retro-cyberpunk atmosphere gradient (instead of pure black)
+                let earthGrad = ctx.createLinearGradient(0, earthCenterY - earthRadius, 0, earthCenterY);
+                earthGrad.addColorStop(0, '#0a2a4a'); // Deep cyber blue at the horizon
+                earthGrad.addColorStop(0.3, '#050b14'); // Fades seamlessly into the night
+                earthGrad.addColorStop(1, '#020204'); // Dark space core
+
+                ctx.fillStyle = earthGrad; 
+                ctx.fill(); 
+
+                // Crisp planet outline
+                ctx.lineWidth = 3; 
+                ctx.strokeStyle = '#00f3ff'; 
+                ctx.stroke();
+
+                // High-performance outer atmospheric glow (Using transparent strokes instead of heavy shadows)
+                ctx.beginPath();
+                ctx.arc(cw/2, earthCenterY, earthRadius + 4, Math.PI, 0);
+                ctx.lineWidth = 6;
+                ctx.strokeStyle = 'rgba(0, 243, 255, 0.15)';
+                ctx.stroke();
             }
 
             // --- 5. ROCKET LOGIC ---
@@ -1945,6 +1978,11 @@
         }
         requestAnimationFrame(renderLoop);
         function setBtn(s) {
+            if(s==='LOGIN') { 
+                ui.btn.classList.add('btn-bet'); 
+                ui.btnMain.innerText='LOGIN TO PLAY'; 
+                ui.btnSub.innerText='Join the Arcade'; 
+            }
             ui.btn.className = '';
             if(s==='BET') { 
                 if (betMode === 'auto') {
@@ -1988,6 +2026,11 @@
                 ui.btnMain.innerText = 'OFFLINE';
                 ui.btnSub.innerText = 'Server unreachable';
                 return;
+            }
+
+            // --- THE FIX: GUEST OVERRIDE ---
+            if (isGuest) {
+                return setBtn('LOGIN');
             }
 
             // 1. Live Bet Priority: If you have money in the air, it MUST be a Cashout button!
@@ -2231,6 +2274,19 @@
             }
         }
 
+
+        // NEW: Prevents CPU lockups when 15+ bots cash out in the exact same millisecond!
+        let potStatsScheduled = false;
+        function schedulePotStatsUpdate() {
+            if (!potStatsScheduled) {
+                potStatsScheduled = true;
+                requestAnimationFrame(() => {
+                    updateLivePotStats();
+                    potStatsScheduled = false;
+                });
+            }
+        }
+
         function updateLivePotStats() {
             let totalStakeUsd = 0;
             let totalPlayers = 0;
@@ -2369,7 +2425,7 @@
             }
 
             // Always update the Total Pot numbers at the top, regardless of which tab is open
-            updateLivePotStats(); 
+            schedulePotStatsUpdate();
         }
 
         // Quick Controls
@@ -2448,6 +2504,7 @@
         };
 
         window.handleAction = () => {
+            if (requireAuth()) return; // Instantly redirect guests
             playSfx('click');
 
             // 1. CASHOUT ALWAYS TAKES ABSOLUTE PRIORITY
@@ -2648,6 +2705,8 @@
         });
 
         window.switchTab = (tab) => {
+            // Block Profile Tab for Guests
+            if (tab === 'profile' && requireAuth()) return;
             playSfx('click');
 
             // Hide all tabs and un-highlight all buttons
@@ -2706,6 +2765,7 @@
         }
 
         window.sendChat = () => {
+            if (requireAuth()) return;
             const input = document.getElementById('chat-input');
             const text = input.value.trim();
             if(text) {
@@ -2787,6 +2847,7 @@
                                                                                                  
 
         function copyAddress(event) {
+            if (requireAuth()) return;
             // Stop the click from immediately hiding the popup
             if (event) event.stopPropagation();
 
@@ -2838,9 +2899,16 @@
             }
         });
 
-        // Update your socket.on('init') to look like this:
         socket.on('init', (d) => {
-            socket.emit('request_my_bets'); // Fetch personal history on load
+            if (!isGuest) {
+                socket.emit('request_my_bets'); // Only fetch if logged in
+                document.getElementById('chat-input').placeholder = "Type message...";
+                document.getElementById('chat-input').readOnly = false;
+            } else {
+                document.getElementById('chat-input').placeholder = "Login to chat...";
+                document.getElementById('chat-input').readOnly = true; // Prevents phone keyboard from popping up
+            }
+    
             // --- HIDE THE LOADING SCREEN ---
             const loader = document.getElementById('loading-overlay');
             if (loader) {
@@ -3036,7 +3104,8 @@
                 // Will only update the row IF it is currently visible in your Top 10
                 addOrUpdateBetRow(d.id, roundBets[d.id], false);
 
-                updateLivePotStats(); 
+                // LAG FIX: Use the new throttler to prevent screen freezes!
+                schedulePotStatsUpdate(); 
             }
         });
         socket.on('disconnect', () => {
@@ -3088,6 +3157,7 @@
         }
 
         window.openWheelModal = () => {
+            if (requireAuth()) return;
             playSfx('click'); 
             document.getElementById('wheel-modal').classList.add('show');
         };

@@ -809,6 +809,39 @@
             /* Pops to normal size smoothly */
             transform: scale(1);
         }
+        /* --- 70X+ MOON EVENT ANIMATION --- */
+        #moon-event {
+            position: absolute;
+            top: 25%;
+            right: -200px; /* Start off-screen right */
+            z-index: 6; /* Sits above the rocket but behind the multiplier text */
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0;
+        }
+
+        .fly-across {
+            animation: flyAcross 6s linear forwards;
+        }
+
+        @keyframes flyAcross {
+            0% { right: -200px; transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+            25% { transform: translateY(-30px) scale(1.1) rotate(-10deg); }
+            50% { transform: translateY(20px) scale(1.2) rotate(5deg); }
+            75% { transform: translateY(-15px) scale(1.1) rotate(-5deg); }
+            100% { right: 120%; transform: translateY(0) scale(1) rotate(0deg); opacity: 1; }
+        }
+
+        .moon-event-text {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 12px;
+            color: var(--magenta); /* Changed to vibrant neon pink */
+            text-shadow: 0 0 15px var(--magenta); /* Glow matches the pink text */
+            margin-top: 10px;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -919,7 +952,17 @@
                             <line id="sig-4" x1="19" y1="20" x2="19" y2="3" stroke="var(--green)"></line>
                         </svg>
                     </div>
-    
+
+                    <!-- NEW: BC.GAME Style Fly-By -->
+                    <div id="moon-event">
+                        <!-- Professional SVG Planet Icon (Replaces GIF) -->
+                        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 12px var(--yellow));">
+                            <circle cx="12" cy="12" r="6" fill="rgba(255, 213, 0, 0.2)"></circle>
+                            <ellipse cx="12" cy="12" rx="12" ry="4" transform="rotate(-30 12 12)"></ellipse>
+                        </svg>
+                        <div class="moon-event-text">DEEP SPACE!</div>
+                    </div>
+
                     <canvas id="game-canvas"></canvas>
     
                     <!-- Countdown Progress Bar -->
@@ -1593,6 +1636,7 @@
         let myPlayer = null;
         let myBalance = 0;
         let roundBets = {}; // Tracks live players
+        let hasMoonAnimationTriggered = false; // <-- ADD THIS
 
         let nextRoundBetQueued = false; // <-- ADD THIS LINE
 
@@ -1844,16 +1888,44 @@
             ctx.fillRect(0, 0, cw, ch);
             ctx.globalAlpha = 1;
 
-            // --- 2. STARS & PARALLAX ---
-            // FIX: Cap speedMult to 50 so backgrounding the tab doesn't generate 'Infinity'
+            // --- 2. STARS, PARALLAX & HYPERSPACE ---
             let speedMult = state === 'PLAYING' ? Math.min(1 + (currentMult*0.5), 50) : 0.1;
 
-            // Stars
+            // CHANGED TO 2.0 FOR TESTING (Change back to 70.0 later!)
+            let isHyperDrive = state === 'PLAYING' && currentMult >= 70.0;
+
+            // Trigger the SVG Fly-By once
+            if (isHyperDrive && !hasMoonAnimationTriggered) {
+                hasMoonAnimationTriggered = true;
+                const moonEl = document.getElementById('moon-event');
+                if (moonEl) {
+                    moonEl.style.opacity = '1';
+                    void moonEl.offsetWidth; // Force CSS reflow to restart animation flawlessly
+                    moonEl.classList.add('fly-across');
+                }
+            }
+
+            // Draw Stars
             ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + (prog * 0.7)})`; 
+            ctx.strokeStyle = `rgba(0, 243, 255, ${0.5 + (prog * 0.5)})`; // Neon cyan warp lines
+
             stars.forEach(s => {
-                s.y += s.v * speedMult * 5;
+                let sSpeed = s.v * speedMult * 5;
+
+                if (isHyperDrive) {
+                    // Warp Speed Stretch Effect!
+                    ctx.lineWidth = s.s;
+                    ctx.beginPath();
+                    ctx.moveTo(s.x, s.y);
+                    ctx.lineTo(s.x, s.y - sSpeed * 2.5); // Stretches the star into a line
+                    ctx.stroke();
+                } else {
+                    // Normal retro square stars
+                    ctx.fillRect(s.x, s.y, s.s, s.s);
+                }
+
+                s.y += sSpeed;
                 if(s.y > ch) { s.y = 0; s.x = Math.random()*cw; }
-                ctx.fillRect(s.x, s.y, s.s, s.s);
             });
 
             // --- 3. DYNAMIC CELESTIAL BODIES (Planets/Galaxies) ---
@@ -2967,6 +3039,13 @@
         });
 
         socket.on('game_waiting', (d) => {
+            // Reset 70x Moon Event
+            hasMoonAnimationTriggered = false;
+            const moonEl = document.getElementById('moon-event');
+            if (moonEl) {
+                moonEl.style.opacity = '0';
+                moonEl.classList.remove('fly-across');
+            }
             state = 'WAITING'; currentMult = 1.0;
             waitDuration = d.waitTime || 6000;
             waitStartTime = Date.now();
@@ -3012,6 +3091,13 @@
         });
 
         socket.on('game_crashed', (d) => {
+            // Reset 70x Moon Event
+            hasMoonAnimationTriggered = false;
+            const moonEl = document.getElementById('moon-event');
+            if (moonEl) {
+                moonEl.style.opacity = '0';
+                moonEl.classList.remove('fly-across');
+            }
             const countdownElement = document.getElementById('countdown-wrap');
             if(countdownElement) countdownElement.style.display = 'none';
 

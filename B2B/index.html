@@ -953,15 +953,6 @@
                         </svg>
                     </div>
 
-                    <!-- NEW: BC.GAME Style Fly-By -->
-                    <div id="moon-event">
-                        <!-- Professional SVG Planet Icon (Replaces GIF) -->
-                        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 0 12px var(--yellow));">
-                            <circle cx="12" cy="12" r="6" fill="rgba(255, 213, 0, 0.2)"></circle>
-                            <ellipse cx="12" cy="12" rx="12" ry="4" transform="rotate(-30 12 12)"></ellipse>
-                        </svg>
-                        <div class="moon-event-text">DEEP SPACE!</div>
-                    </div>
 
                     <canvas id="game-canvas"></canvas>
     
@@ -1666,6 +1657,10 @@
         // -----------------------
         let currentHash = ''; // <-- ADD THIS LINE!
         let currentSeed = '';
+        // --- CASHOUT PARTICLE ENGINE ---
+        let cashoutParticles = [];
+        let lastRocketX = 0;
+        let lastRocketY = 0;
 
         // --- Audio Synthesizer (Web Audio API) ---
         let actx = null;
@@ -1769,85 +1764,47 @@
             return { name, color, badge, next, current: w };
         }
 
-        // --- Graphics Engine ---
+        // --- Modern Graphing Engine ---
         let cw, ch;
-        let stars = [], particles = [], explosion = [], celestials = [];
-        let earthY = 0;
-        let rocketY = 0;
-
-        const rocketSprite = [
-            [0,0,0,0,2,2,0,0,0,0], [0,0,0,2,2,2,2,0,0,0], [0,0,0,1,1,1,1,0,0,0], [0,0,1,1,1,1,1,1,0,0],
-            [0,0,1,1,3,3,1,1,0,0], [0,0,1,1,3,3,1,1,0,0], [0,0,1,1,1,1,1,1,0,0], [0,2,1,1,1,1,1,1,2,0],
-            [2,2,1,1,1,1,1,1,2,2], [2,2,1,1,1,1,1,1,2,2], [2,0,2,1,1,1,1,2,0,2], [0,0,0,1,1,1,1,0,0,0],
-            [0,0,0,1,0,0,1,0,0,0]
-        ];
-
 
         function resizeCanvas() {
             cw = ui.canvas.width = ui.canvas.parentElement.clientWidth;
             ch = ui.canvas.height = ui.canvas.parentElement.clientHeight;
-            stars = []; celestials = [];
-            for(let i=0; i<80; i++) stars.push({ x: Math.random()*cw, y: Math.random()*ch, s: Math.random()*2+1, v: Math.random()*0.5+0.1 });
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
-
-        function createExhaust(x, y) {
-            // Hot white core
-            particles.push({ x: x+(Math.random()-0.5)*6, y: y, vx: (Math.random()-0.5)*1, vy: Math.random()*2+4, life: 1, c: '#ffffff' });
-            // Neon outer flames (Cyan/Magenta)
-            particles.push({ x: x+(Math.random()-0.5)*14, y: y, vx: (Math.random()-0.5)*3, vy: Math.random()*4+2, life: 1, c: Math.random()>0.5?'#00f3ff':'#ff00ea' });
-        }
-
-        // UPGRADED EXPLOSION: More particles, variable sizes!
-        function createExplosion(x, y) {
-            for(let i=0; i<120; i++) {
-                let angle = Math.random() * Math.PI * 2;
-                let speed = Math.random() * 15 + 2;
-                explosion.push({ 
-                    x: x, y: y, 
-                    vx: Math.cos(angle)*speed, 
-                    vy: Math.sin(angle)*speed, 
-                    life: 1, 
-                    c: Math.random()>0.5?'#ff3333':'#ff00ea',
-                    s: Math.random()*4+2 // Random particle size
-                });
-            }
-        }
-
-        function drawSprite(sprite, cx, cy, pSize) {
-            const sx = cx - (sprite[0].length * pSize)/2, sy = cy - (sprite.length * pSize)/2;
-            for(let r=0; r<sprite.length; r++) {
-                for(let c=0; c<sprite[r].length; c++) {
-                    const v = sprite[r][c]; if(v===0) continue;
-                    ctx.fillStyle = v===1?'#fff':v===2?'#f33':'#0ff';
-                    ctx.fillRect(sx+c*pSize, sy+r*pSize, pSize, pSize);
-                }
-            }
-            return { bx: cx, by: sy + sprite.length*pSize };
-        }
 
         function renderLoop() {
             requestAnimationFrame(renderLoop);
 
             let elapsed = 0;
+
             if (state === 'PLAYING') {
                 elapsed = Date.now() - startTime;
                 if (elapsed < 0) elapsed = 0; 
-
                 currentMult = Math.pow(Math.E, GROWTH_RATE * elapsed);
                 if (currentMult < 1.00) currentMult = 1.00; 
 
                 ui.mult.innerText = currentMult.toFixed(2) + 'x';
-                ui.mult.style.color = currentMult > 2 ? 'var(--green)' : 'var(--text-main)';
+                ui.mult.style.color = '#ffffff'; // Always stays crisp white while flying!
+                ui.mult.style.textShadow = '0 0 20px rgba(0,0,0,0.5)';
 
-                // KEEP the flat retro shadow at all times (no glow)
-                ui.mult.style.textShadow = '4px 4px 0px rgba(0,0,0,0.8)';
-
+                // THE FIX: Don't overwrite the button if they just clicked Cash Out!
                 if (myBet && !myBet.cashedOut) {
-                    ui.btnMain.innerText = 'CASH OUT';
-                    ui.btnSub.innerText = (myBet.amount * currentMult).toFixed(2);
+                    if (myBet.isCashingOut) {
+                        ui.btnMain.innerText = 'CASHING OUT...';
+                        ui.btnSub.innerText = 'Please wait';
+                    } else {
+                        ui.btnMain.innerText = 'CASH OUT';
+                        ui.btnSub.innerText = (myBet.amount * currentMult).toFixed(2);
+                    }
                 }
+            } else if (state === 'CRASHED') {
+                // THE FIX: Extract the exact locked multiplier directly from the UI text!
+                // (e.g., it safely turns "2.41x" into 2.41)
+                currentMult = parseFloat(ui.mult.innerText); 
+                elapsed = Math.log(currentMult) / GROWTH_RATE;
+
             } else if (state === 'WAITING') {
                 ui.mult.innerText = '1.00x';
                 ui.mult.style.color = '#ffffff';
@@ -1865,198 +1822,250 @@
                     document.getElementById('countdown-fill').style.background = 'var(--cyan)';
                     document.getElementById('countdown-fill').style.boxShadow = '0 0 10px var(--cyan)';
                 } else {
-                    ui.stat.style.color = 'var(--cyan)';
+                    ui.stat.style.color = 'var(--text-main)';
                     document.getElementById('countdown-fill').style.background = 'var(--cyan)';
                     document.getElementById('countdown-fill').style.boxShadow = '0 0 10px var(--cyan)';
                 }
             }
 
-            // --- 1. ATMOSPHERE TRANSITION ---
-            // Calculate flight progress (0 = ground, 1 = deep space)
-            let prog = Math.min((currentMult - 1) / 3, 1); 
+            // --- THE FIX: DYNAMIC FONT SCALING ---
+            // Checks the length of the string (e.g., "271.56x" is 7 chars)
+            // Shrinks the font automatically so it never overflows the graph!
+            let textLen = ui.mult.innerText.length;
+            if (textLen >= 8) {
+                ui.mult.style.fontSize = '32px'; // e.g. 1000.00x
+            } else if (textLen >= 7) {
+                ui.mult.style.fontSize = '42px'; // e.g. 100.00x
+            } else {
+                ui.mult.style.fontSize = '56px'; // Normal size
+            }
 
-            // Deep space background
-            ctx.fillStyle = '#020204';
+            // --- 1. BACKGROUND ---
+            ctx.fillStyle = '#0e1015'; // Sleek dark aesthetic
             ctx.fillRect(0, 0, cw, ch);
 
-            // Fading atmosphere
-            ctx.globalAlpha = 1 - prog;
-            let grad = ctx.createLinearGradient(0, 0, 0, ch);
-            grad.addColorStop(0, '#0a192f');
-            grad.addColorStop(1, '#1a365d');
-            ctx.fillStyle = grad;
-            ctx.fillRect(0, 0, cw, ch);
-            ctx.globalAlpha = 1;
+            // --- 2. DYNAMIC GRAPH DIMENSIONS (BC.GAME Style) ---
+            const padLeft = 40;   // Room for Multipliers on Left
+            const padBottom = 25; // Room for Seconds on Bottom
+            const padTop = 30;    // Headroom for line tip
+            const padRight = 20;  // Padding so line doesn't hit right edge
 
-            // --- 2. STARS, PARALLAX & HYPERSPACE ---
-            let speedMult = state === 'PLAYING' ? Math.min(1 + (currentMult*0.5), 50) : 0.1;
+            // THE FIX: Dynamic Zooming! 
+            // Instead of a massive fixed 10-second axis, it pushes the boundaries fluidly.
+            // This keeps the rocket smoothly in frame and the axis numbers perfectly synced to its position.
+            let maxX = Math.max(5000, elapsed * 1.15); 
+            let maxY = Math.max(2.0, currentMult * 1.25); 
 
-            // CHANGED TO 2.0 FOR TESTING (Change back to 70.0 later!)
-            let isHyperDrive = state === 'PLAYING' && currentMult >= 70.0;
+            // --- 3. DRAW AXES LABELS (Clean BC.GAME Style) ---
+            ctx.font = '14px "VT323", monospace'; 
+            ctx.fillStyle = '#5a5d7a'; // Muted grey text
 
-            // Trigger the SVG Fly-By once
-            if (isHyperDrive && !hasMoonAnimationTriggered) {
-                hasMoonAnimationTriggered = true;
-                const moonEl = document.getElementById('moon-event');
-                if (moonEl) {
-                    moonEl.style.opacity = '1';
-                    void moonEl.offsetWidth; // Force CSS reflow to restart animation flawlessly
-                    moonEl.classList.add('fly-across');
+            // Draw Bottom Axis (Seconds)
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            // Dynamically space the seconds so there are never more than 5-6 labels
+            let timeStep = 1000; 
+            if (maxX > 5000) timeStep = 2000;
+            if (maxX > 15000) timeStep = 5000;
+            if (maxX > 30000) timeStep = 10000;
+            if (maxX > 60000) timeStep = 20000;
+
+            for (let t = 0; t <= maxX; t += timeStep) {
+                let x = padLeft + (t / maxX) * (cw - padLeft - padRight);
+                if (x > padLeft) {
+                    ctx.fillText((t/1000).toFixed(0) + 's', x, ch - padBottom + 8);
                 }
             }
 
-            // Draw Stars
-            ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + (prog * 0.7)})`; 
-            ctx.strokeStyle = `rgba(0, 243, 255, ${0.5 + (prog * 0.5)})`; // Neon cyan warp lines
+            // Draw Left Axis (Multipliers)
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
 
-            stars.forEach(s => {
-                let sSpeed = s.v * speedMult * 5;
+            // THE FIX: Aggressively space the multipliers so they never clutter!
+            let multStep = 0.5;
+            if (maxY > 3) multStep = 1;
+            if (maxY > 10) multStep = 2;
+            if (maxY > 30) multStep = 5;
+            if (maxY > 60) multStep = 10;
+            if (maxY > 150) multStep = 30;
+            if (maxY > 300) multStep = 50;
+            if (maxY > 600) multStep = 100;
+            if (maxY > 1500) multStep = 300;
 
-                if (isHyperDrive) {
-                    // Warp Speed Stretch Effect!
-                    ctx.lineWidth = s.s;
-                    ctx.beginPath();
-                    ctx.moveTo(s.x, s.y);
-                    ctx.lineTo(s.x, s.y - sSpeed * 2.5); // Stretches the star into a line
-                    ctx.stroke();
-                } else {
-                    // Normal retro square stars
-                    ctx.fillRect(s.x, s.y, s.s, s.s);
-                }
-
-                s.y += sSpeed;
-                if(s.y > ch) { s.y = 0; s.x = Math.random()*cw; }
-            });
-
-            // --- 3. DYNAMIC CELESTIAL BODIES (Planets/Galaxies) ---
-            // Space is vast. Max 2 planets on screen at once, and they spawn much less frequently.
-            if (state === 'PLAYING' && prog > 0.5 && celestials.length < 2 && Math.random() < 0.003) {
-                // Spawn a new retro planet
-                celestials.push({
-                    x: Math.random() * cw,
-                    y: -100,
-                    r: Math.random() * 30 + 10,
-                    color: `hsl(${Math.random() > 0.5 ? 300 : 180}, 80%, 60%)`, // Magenta or Cyan
-                    v: Math.random() * 0.3 + 0.1,
-                    ring: Math.random() > 0.7
-                });
+            for (let m = 1; m <= maxY; m += multStep) {
+                let y = (ch - padBottom) - ((m - 1) / (maxY - 1)) * (ch - padBottom - padTop);
+                let text = m.toFixed(1).replace('.0', '') + 'x';
+                ctx.fillText(text, padLeft - 10, y);
             }
 
-            celestials.forEach((c, i) => {
-                c.y += c.v * speedMult * 5;
-                // Draw Planet
-                ctx.beginPath(); ctx.arc(c.x, c.y, c.r, 0, Math.PI*2);
-                ctx.fillStyle = c.color; ctx.fill();
-                // Draw Ring
-                if (c.ring) {
-                    ctx.beginPath(); ctx.ellipse(c.x, c.y, c.r*2, c.r*0.4, Math.PI/8, 0, Math.PI*2);
-                    ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.stroke();
-                }
-                if (c.y > ch + 100) celestials.splice(i, 1);
-            });
+            // Subtle L-Bracket frame (Bottom and Left borders only)
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+            ctx.beginPath();
+            ctx.moveTo(padLeft, padTop);
+            ctx.lineTo(padLeft, ch - padBottom); 
+            ctx.lineTo(cw - padRight, ch - padBottom); 
+            ctx.stroke();
 
-            // --- 4. THE LAUNCHPAD & EARTH ---
-            if(state === 'PLAYING') earthY += 3 * speedMult;
-            else if(state === 'WAITING') earthY = 0;
-
-            // FIX: Ensure earthY doesn't become Infinity and crash the Canvas arc() function
-            if(earthY < ch + 150 && isFinite(earthY)) {
-                // Base structure
-                ctx.fillStyle = '#11121d';
+            // --- 4. DRAW EXPONENTIAL CURVE ---
+            if (state === 'PLAYING' || state === 'CRASHED') {
                 ctx.beginPath();
-                ctx.moveTo(cw/2 - 50, ch - 25 + earthY);
-                ctx.lineTo(cw/2 + 50, ch - 25 + earthY);
-                ctx.lineTo(cw/2 + 70, ch + earthY);
-                ctx.lineTo(cw/2 - 70, ch + earthY);
+                ctx.moveTo(padLeft, ch - padBottom); // Start at bottom left (1.00x)
+
+                let steps = 100; // High resolution for buttery smooth curve
+                let currentX = padLeft;
+                let currentY = ch - padBottom;
+
+                for (let i = 0; i <= steps; i++) {
+                    let t = (elapsed / steps) * i;
+                    let m = Math.pow(Math.E, GROWTH_RATE * t); 
+
+                    let x = padLeft + (t / maxX) * (cw - padLeft - padRight);
+                    let y = (ch - padBottom) - ((m - 1) / (maxY - 1)) * (ch - padBottom - padTop);
+
+                    ctx.lineTo(x, y);
+
+                    // Save final tip coordinates
+                    if (i === steps) { currentX = x; currentY = y; }
+                }
+
+                // THE FIX: Canvas needs exact Hex Codes. CSS variables cause it to stay green!
+                let lineColor = state === 'CRASHED' ? '#ff3333' : '#26ec00'; 
+
+                let gradEndX = currentX === padLeft ? currentX + 0.1 : currentX;
+                let gradEndY = currentY === (ch - padBottom) ? currentY - 0.1 : currentY;
+
+                let lineGrad = ctx.createLinearGradient(padLeft, ch - padBottom, gradEndX, gradEndY);
+
+                if (state === 'CRASHED') {
+                    // Sleek "Dead/Crashed" red gradient
+                    lineGrad.addColorStop(0, '#5a1e1e'); // Dark muted red at the bottom
+                    lineGrad.addColorStop(1, '#ff3333'); // Bright red at the crash point
+                } else {
+                    // Active flying green gradient
+                    lineGrad.addColorStop(0, '#ffffff');
+                    lineGrad.addColorStop(1, '#26ec00');
+                }
+
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = lineGrad;
+                ctx.stroke();
+
+                // --- 5. GRADIENT FILL UNDER CURVE ---
+                let fillGrad = ctx.createLinearGradient(0, gradEndY, 0, ch - padBottom);
+                fillGrad.addColorStop(0, state === 'CRASHED' ? 'rgba(255, 51, 51, 0.25)' : 'rgba(38, 236, 0, 0.25)');
+                fillGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+                ctx.lineTo(currentX, ch - padBottom); // Drop down to axis
+                ctx.lineTo(padLeft, ch - padBottom); // Back to start
+                ctx.fillStyle = fillGrad;
                 ctx.fill();
 
-                // Neon glowing strip
-                ctx.fillStyle = '#00f3ff';
-                ctx.fillRect(cw/2 - 40, ch - 25 + earthY, 80, 4);
+                // --- 6. DRAW SLEEK LEADING DOT ---
+                    ctx.beginPath();
+                    ctx.arc(currentX, currentY, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = lineColor;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = lineColor;
+                    ctx.fill();
+                    ctx.shadowBlur = 0; // reset
 
-                // --- LAG FIX & UI UPGRADE: Planet Curvature ---
-                // Removed shadowBlur because it causes massive GPU lag spikes on devices.
-                const earthRadius = cw * 1.5;
-                const earthCenterY = ch + 250 + earthY;
+                    // Save exact coordinates for the cashout particles
+                    lastRocketX = currentX;
+                    lastRocketY = currentY;
+                }
 
-                ctx.beginPath(); 
-                ctx.arc(cw/2, earthCenterY, earthRadius, Math.PI, 0);
+                // --- 7. CASHOUT PARTICLES (BC.GAME STYLE) ---
+                // This runs outside the playing check so names finish falling even if it crashes!
+                for (let i = cashoutParticles.length - 1; i >= 0; i--) {
+                    let p = cashoutParticles[i];
+                    p.y += p.vy; // Drop down
+                    p.x += p.vx; // Drift slightly horizontally
+                    p.opacity -= 0.015; // Fade out smoothly (~1 second lifespan)
 
-                // Beautiful retro-cyberpunk atmosphere gradient (instead of pure black)
-                let earthGrad = ctx.createLinearGradient(0, earthCenterY - earthRadius, 0, earthCenterY);
-                earthGrad.addColorStop(0, '#0a2a4a'); // Deep cyber blue at the horizon
-                earthGrad.addColorStop(0.3, '#050b14'); // Fades seamlessly into the night
-                earthGrad.addColorStop(1, '#020204'); // Dark space core
-
-                ctx.fillStyle = earthGrad; 
-                ctx.fill(); 
-
-                // Crisp planet outline
-                ctx.lineWidth = 3; 
-                ctx.strokeStyle = '#00f3ff'; 
-                ctx.stroke();
-
-                // High-performance outer atmospheric glow (Using transparent strokes instead of heavy shadows)
-                ctx.beginPath();
-                ctx.arc(cw/2, earthCenterY, earthRadius + 4, Math.PI, 0);
-                ctx.lineWidth = 6;
-                ctx.strokeStyle = 'rgba(0, 243, 255, 0.15)';
-                ctx.stroke();
-            }
-
-            // --- 5. ROCKET LOGIC ---
-            if (state === 'CRASHED') {
-                for(let i=explosion.length-1; i>=0; i--) {
-                    let p = explosion[i];
-                    p.x += p.vx; p.y += p.vy; p.life -= 0.02;
-                    if(p.life <= 0) explosion.splice(i,1);
-                    else { 
-                        ctx.globalAlpha = p.life; 
-                        ctx.fillStyle = p.c; 
-                        // Draw variable sized debris
-                        ctx.fillRect(p.x, p.y, p.s || 4, p.s || 4); 
+                    if (p.opacity <= 0) {
+                        cashoutParticles.splice(i, 1); // Delete when invisible
+                    } else {
+                        ctx.font = '14px "VT323", monospace'; // Small, sleek font
+                        ctx.fillStyle = `rgb(108, 111, 147, ${p.opacity * 0.85})`; // Fading Clean White/Soft Gray
+                        ctx.textAlign = 'center';
+                        ctx.fillText(p.text, p.x, p.y);
                     }
                 }
-                ctx.globalAlpha = 1;
-            } else {
-                if(state === 'WAITING') {
-                    // Hover smoothly just above the launchpad
-                    rocketY = ch - 50 + Math.sin(Date.now() / 200) * 4; 
-                } else {
-                    // Cinematic Easing: Smoothly detach from pad and climb to center
-                    let launchProgress = Math.min(elapsed / 1500, 1); // 1.5s to center
-                    let startY = ch - 50;
-                    let targetY = ch / 2;
-                    let easeOut = 1 - Math.pow(1 - launchProgress, 3);
-                    rocketY = startY - ((startY - targetY) * easeOut);
+                // --- 8. DRAW PERSONAL CASHOUT MARKER (BC.GAME STYLE) ---
+                if (myBet && myBet.cashedOut && myBet.cashoutMult) {
+                    // Mathematically calculate the exact time you cashed out
+                    let myCashoutTime = Math.log(myBet.cashoutMult) / GROWTH_RATE;
 
-                    // (Shake logic removed for a perfectly smooth cinematic flight)
-                }
+                    // Convert to live canvas coordinates (tracks automatically as the graph zooms!)
+                    let markX = padLeft + (myCashoutTime / maxX) * (cw - padLeft - padRight);
+                    let markY = (ch - padBottom) - ((myBet.cashoutMult - 1) / (maxY - 1)) * (ch - padBottom - padTop);
 
-                let b = drawSprite(rocketSprite, cw/2, rocketY, 4);
-                if(state === 'PLAYING' || Math.random() > 0.5) {
-                    createExhaust(b.bx, b.by); createExhaust(b.bx, b.by);
+                    // Only render if the marker is visible inside the canvas
+                    if (markX >= padLeft && markX <= cw - padRight) {
+
+                        // A. Draw Vertical Dashed Guideline to the Bottom Axis
+                        ctx.beginPath();
+                        ctx.setLineDash([4, 4]); // 4px dashed line
+                        ctx.moveTo(markX, markY);
+                        ctx.lineTo(markX, ch - padBottom);
+                        ctx.strokeStyle = 'rgba(255, 213, 0, 0.4)'; // Soft translucent gold
+                        ctx.lineWidth = 1.5;
+                        ctx.stroke();
+                        ctx.setLineDash([]); // Reset dash format for other drawings
+
+                        // B. Draw Glowing Golden Dot on the Curve
+                        ctx.beginPath();
+                        ctx.arc(markX, markY, 6, 0, Math.PI * 2);
+                        ctx.fillStyle = '#ffd500'; // Bright Golden Yellow
+                        ctx.shadowBlur = 12;
+                        ctx.shadowColor = '#ffd500';
+                        ctx.fill();
+                        ctx.shadowBlur = 0; // Reset shadow
+
+                        // C. Draw Floating Pill Badge (e.g. "2.50x")
+                        let badgeText = myBet.cashoutMult.toFixed(2) + 'x';
+                        ctx.font = 'bold 12px "VT323", monospace';
+                        let textWidth = ctx.measureText(badgeText).width;
+
+                        let badgeW = textWidth + 12;
+                        let badgeH = 18;
+                        let badgeX = markX - badgeW / 2;
+                        let badgeY = markY - 24; // Hovering right above the dot
+
+                        // Pill Background Box
+                        ctx.fillStyle = '#11121d';
+                        ctx.strokeStyle = '#ffd500';
+                        ctx.lineWidth = 1.5;
+
+                        if (ctx.roundRect) {
+                            ctx.beginPath();
+                            ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+                            ctx.fill();
+                            ctx.stroke();
+                        } else {
+                            ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+                            ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
+                        }
+
+                        // Pill Badge Text
+                        ctx.fillStyle = '#ffd500';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(badgeText, markX, badgeY + badgeH / 2 + 1);
+                    }
                 }
             }
-
-            // --- 6. EXHAUST PARTICLES ---
-            for(let i=particles.length-1; i>=0; i--) {
-                let p = particles[i];
-                p.x += p.vx; p.y += p.vy * (state==='PLAYING'?speedMult:1); p.life -= 0.04;
-                if(p.life<=0) particles.splice(i,1);
-                else { ctx.globalAlpha=p.life; ctx.fillStyle=p.c; ctx.fillRect(p.x,p.y,4,4); }
-            }
-            ctx.globalAlpha = 1;
-        }
         requestAnimationFrame(renderLoop);
         function setBtn(s) {
+            ui.btn.className = ''; // Always wipe old classes first
+
             if(s==='LOGIN') { 
                 ui.btn.classList.add('btn-bet'); 
                 ui.btnMain.innerText='LOGIN TO PLAY'; 
                 ui.btnSub.innerText='Join the Arcade'; 
-            }
-            ui.btn.className = '';
-            if(s==='BET') { 
+            } else if(s==='BET') { 
                 if (betMode === 'auto') {
                     if (autoBetEnabled) {
                         ui.btn.classList.add('btn-autostop'); 
@@ -2072,23 +2081,30 @@
                     ui.btnMain.innerText='PLACE BET'; 
                     ui.btnSub.innerText='Next Round'; 
                 }
-            }
-            // --- NEW STATES FOR QUEUING ---
-            if(s==='BET_NEXT') {
+            } else if(s==='BET_NEXT') {
                 ui.btn.classList.add('btn-bet'); 
                 ui.btnMain.innerText='BET NEXT ROUND'; 
                 ui.btnSub.innerText='Queue Bet'; 
-            }
-            if(s==='CANCEL_NEXT') {
-                ui.btn.classList.add('btn-cancel'); // <-- Now uses the muted CSS class
+            } else if(s==='CANCEL_NEXT') {
+                ui.btn.classList.add('btn-cancel'); 
                 ui.btnMain.innerText='CANCEL'; 
                 ui.btnSub.innerText='Bet Queued'; 
+            } else if(s==='WAIT') { 
+                ui.btn.classList.add('btn-waiting'); 
+                ui.btnMain.innerText='WAITING'; 
+                ui.btnSub.innerText='Launch Prep'; 
+            } else if(s==='CASH') { 
+                ui.btn.classList.add('btn-cashout'); 
+                // Don't set text here because renderLoop handles the dynamic multiplier!
+            } else if(s==='DIS') { 
+                ui.btn.classList.add('btn-disabled'); 
+                ui.btnMain.innerText='IN PROGRESS'; 
+                ui.btnSub.innerText='Wait next'; 
+            } else if(s==='WIN') { 
+                ui.btn.classList.add('btn-disabled'); 
+                ui.btnMain.innerText='SUCCESS'; 
+                // Sub text is handled dynamically in cashout_success
             }
-            // ------------------------------
-            if(s==='WAIT') { ui.btn.classList.add('btn-waiting'); ui.btnMain.innerText='WAITING'; ui.btnSub.innerText='Launch Prep'; }
-            if(s==='CASH') { ui.btn.classList.add('btn-cashout'); }
-            if(s==='DIS') { ui.btn.classList.add('btn-disabled'); ui.btnMain.innerText='IN PROGRESS'; ui.btnSub.innerText='Wait next'; }
-            if(s==='WIN') { ui.btn.classList.add('btn-disabled'); ui.btnMain.innerText='SUCCESS'; }
         }
 
         // --- MASTER BUTTON STATE RESOLVER ---
@@ -2395,18 +2411,26 @@
         function addOrUpdateBetRow(id, b, forceAppend = false) {
             let row = document.getElementById('bet-row-' + id);
 
-            // SECURITY/LAG FIX: If the row isn't in the DOM and we aren't rebuilding the table, ignore it!
             if (!row && !forceAppend) return;
 
             let betAmount = b.amount || b.amountUsd || 0;
             let isMe = (myPlayer && id === myPlayer.id);
             let flexOrder = isMe ? -999999999 : Math.floor(-betAmount * 100); 
 
+            // THE FIX: Properly format the text based on Win, Loss, or Flying!
             let isCash = b.cashedOut;
-            let multHtml = isCash ? `<span class="mult-badge">${b.cashoutMult.toFixed(2)}x</span>` : '-';
-            let profStr = isCash ? '+$'+(betAmount * b.cashoutMult - betAmount).toFixed(2) : '-';
-            const vip = getVipInfo(b.wagered);
+            let multHtml = '-';
+            let profStr = '-';
 
+            if (isCash) {
+                multHtml = `<span class="mult-badge">${b.cashoutMult.toFixed(2)}x</span>`;
+                profStr = '+$'+(betAmount * b.cashoutMult - betAmount).toFixed(2);
+            } else if (state === 'CRASHED') {
+                multHtml = `<span style="color:var(--red)">0.00x</span>`;
+                profStr = `<span style="color:var(--text-dim)">-$${betAmount.toFixed(2)}</span>`;
+            }
+
+            const vip = getVipInfo(b.wagered);
             let rowClasses = `live-row ${isCash ? 'cashed' : (state === 'CRASHED' ? 'crashed' : '')} ${isMe ? 'my-bet-row' : ''}`;
 
             if (row) {
@@ -2578,10 +2602,16 @@
         window.handleAction = () => {
             if (requireAuth()) return; // Instantly redirect guests
             playSfx('click');
-
+    
             // 1. CASHOUT ALWAYS TAKES ABSOLUTE PRIORITY
             if(ui.btn.classList.contains('btn-cashout')) {
-                socket.emit('cash_out');
+                // Instantly lock the UI locally so it feels incredibly responsive
+                if (myBet && !myBet.cashedOut && !myBet.isCashingOut) {
+                    myBet.isCashingOut = true; 
+                    ui.btn.classList.remove('btn-cashout');
+                    ui.btn.classList.add('btn-disabled');
+                    socket.emit('cash_out');
+                }
                 return;
             }
 
@@ -3058,7 +3088,9 @@
 
             ui.mult.innerText = '1.00x'; ui.mult.style.color = 'var(--text-main)';
             ui.stat.innerText = 'PREPARING LAUNCH...'; ui.stat.style.color = 'var(--cyan)';
-            myBet = null; particles = []; explosion = []; roundBets = {};
+
+            // ADDED: cashoutParticles = []; to clear memory perfectly
+            myBet = null; particles = []; explosion = []; roundBets = {}; cashoutParticles = []; 
             localHistory = d.history || [];
             renderHistoryBar();
             ui.hist.scrollLeft = ui.hist.scrollWidth;
@@ -3113,7 +3145,7 @@
             ui.stat.innerText = 'Crushed!'; ui.stat.style.color = 'var(--red)';
             playSfx('crash');
 
-            createExplosion(cw/2, rocketY);
+            //createExplosion(cw/2, rocketY);
             
             // Instantly push this round's bet to the local history Array!
             if (myBet) {
@@ -3126,8 +3158,8 @@
                 if (myBetsHistory.length > 50) myBetsHistory.pop();
             }
 
-            // Re-render instantly to update the tabs
-            if (activeTableTab === 'mine') renderLiveTable();
+        // Re-render ALL tables instantly to show the Red 0.00x losses
+            renderLiveTable(); 
 
             updateButtonState(); // Instantly turns to red CRASHED state for losers
 
@@ -3139,12 +3171,6 @@
                 }
             }, myBet ? 1500 : 0);
 
-            Object.keys(roundBets).forEach(id => {
-                if (!roundBets[id].cashedOut) {
-                    const row = document.getElementById('bet-row-' + id);
-                    if (row) row.classList.add('crashed');
-                }
-            });
             updateLivePotStats(); 
         });
 
@@ -3190,8 +3216,19 @@
                 // Will only update the row IF it is currently visible in your Top 10
                 addOrUpdateBetRow(d.id, roundBets[d.id], false);
 
-                // LAG FIX: Use the new throttler to prevent screen freezes!
-                schedulePotStatsUpdate(); 
+                // --- THE FIX: SPAWN CASHOUT PARTICLE ---
+                if (state === 'PLAYING') {
+                    cashoutParticles.push({
+                        text: d.username.substring(0, 8), // Keep it short and clean
+                        x: lastRocketX + (Math.random() * 20 - 10), // Slight random horizontal spread
+                        y: lastRocketY,
+                        vx: (Math.random() - 0.5) * 0.5, // Drift slightly left or right
+                        vy: 0.5 + Math.random(), // Drop down at random gentle speeds
+                        opacity: 1
+                    });
+                }
+
+                updateLivePotStats(); 
             }
         });
         socket.on('disconnect', () => {

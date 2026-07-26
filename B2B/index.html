@@ -363,8 +363,8 @@
         .shake { animation: screenShake 0.4s; }
         @keyframes screenShake { 0%, 100%{transform: translate(0,0);} 20%{transform: translate(-5px,5px);} 40%{transform: translate(5px,-5px);} 60%{transform: translate(-5px,-5px);} 80%{transform: translate(5px,5px);} }
 
-        #multiplier-display { position: absolute; z-index: 5; font-family: 'Press Start 2P'; font-size: 56px; text-align: center; width: 100%; top: 35%; text-shadow: 4px 4px 0px rgba(0,0,0,0.8); transition: color 0.2s; }
-        #status-display { position: absolute; z-index: 5; top: 25%; font-family: 'Press Start 2P'; font-size: 12px; color: var(--cyan); text-align: center; width: 100%; text-shadow: 2px 2px 0px #000; letter-spacing: 1px; }
+        #multiplier-display { position: absolute; z-index: 5; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-weight: 900; font-variant-numeric: tabular-nums; font-size: 56px; text-align: center; width: 100%; top: 35%; padding-left: 0px; text-shadow: 0 4px 15px rgba(0,0,0,0.6); transition: color 0.2s; }
+        #status-display { position: absolute; z-index: 5; top: 25%; font-family: 'Press Start 2P'; font-size: 12px; color: var(--cyan); text-align: center; width: 100%; letter-spacing: 1px; }
 
         /* --- MODERN GAME HUD --- */
         #game-hud { 
@@ -809,6 +809,21 @@
             /* Pops to normal size smoothly */
             transform: scale(1);
         }
+        /* --- PROVABLY FAIR ALGORITHM MODAL --- */
+        #algo-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 99999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        #algo-modal.show { opacity: 1; pointer-events: auto; }
+        #algo-modal-content {
+            background: #11121d; border: 1px solid var(--panel-border); border-radius: 8px; padding: 20px;
+            width: 90%; max-height: 85%; overflow-y: auto;
+            transform: scale(0.9); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #algo-modal.show #algo-modal-content { transform: scale(1); }
         /* --- 70X+ MOON EVENT ANIMATION --- */
         #moon-event {
             position: absolute;
@@ -1126,7 +1141,7 @@
                     <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;" id="stat-wagered-sol">(0.0000 SOL)</div>
                 </div>
                 <div class="dash-card">
-                    <div class="dash-card-label">TOTAL WON</div>
+                    <div class="dash-card-label">NET PROFIT</div>
                     <div class="dash-card-val" id="stat-profit">$0.00</div>
                     <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;" id="stat-profit-sol">(0.00 USDT)</div>
                 </div>
@@ -1318,6 +1333,12 @@
                     <div style="color: var(--text-dim); font-size: 10px;">CALCULATED CRASH:</div>
                     <div id="vr-crash" style="color: var(--green); font-size: 24px;"></div>
                 </div>
+
+                <!-- ADD THIS NEW LINK HERE -->
+                <div style="text-align: center; margin-top: 15px;">
+                    <span onclick="openAlgoModal()" style="color: var(--text-dim); font-size: 8px; font-family: 'Press Start 2P', monospace; text-decoration: underline; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--cyan)'" onmouseout="this.style.color='var(--text-dim)'">HOW IT WORKS</span>
+                </div>
+                
             </div>
         </div>
 
@@ -1351,7 +1372,29 @@
         <div class="hp-header">PAST ROUNDS</div>
         <div class="hp-list" id="hm-list"></div>
     </div>
+        <!-- PROVABLY FAIR ALGORITHM MODAL -->
+        <div id="algo-modal">
+            <div id="algo-modal-content">
+                <div style="font-family:'Press Start 2P'; color:var(--yellow); font-size:12px; margin-bottom: 15px; text-align: center; text-shadow: 0 0 10px rgba(255,213,0,0.3);">ALGORITHM</div>
+                <div style="color: #fff; font-family: 'VT323', monospace; font-size: 18px; line-height: 1.4; display: flex; flex-direction: column; gap: 12px;">
+                    <p style="color: var(--text-dim);">RetroCrush uses a cryptographic Provably Fair system. Every round is predetermined, immutable, and mathematically verifiable.</p>
+                    <p><strong style="color: var(--cyan);">1. GENERATION:</strong> Before the round starts, the server generates a 32-byte secret <span style="color: var(--yellow);">SEED</span>.</p>
+                    <p><strong style="color: var(--cyan);">2. HASHING:</strong> The seed is hashed using SHA-256. This Hash is public while the rocket flies, proving the crash point was not changed mid-flight.</p>
+                    <p><strong style="color: var(--cyan);">3. MATH:</strong> When the round ends, the secret Seed is revealed. We take the first 8 characters of the hex seed and parse it into a 32-bit integer (H).</p>
 
+                    <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 4px; border-left: 2px solid var(--magenta);">
+                        <span style="color: var(--text-dim); font-size: 14px;">Calculate a result (R) between 0 and 1:</span><br>
+                        <span style="color: var(--magenta);">R = H / (2^32 - 1)</span>
+                    </div>
+
+                    <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 4px; border-left: 2px solid var(--green);">
+                        <span style="color: var(--text-dim); font-size: 14px;">Apply 5% House Edge to get final multiplier:</span><br>
+                        <span style="color: var(--green);">Crash = 0.95 / (1 - R)</span>
+                    </div>
+                </div>
+                <button onclick="closeAlgoModal()" style="width: 100%; margin-top: 20px; padding: 12px; background: var(--panel-border); color: #fff; border: none; font-family: 'Press Start 2P'; font-size: 10px; cursor: pointer; border-radius: 4px; transition: 0.2s;" onmouseover="this.style.background='#333652'" onmouseout="this.style.background='var(--panel-border)'">CLOSE</button>
+            </div>
+        </div>
         <!-- LUCKY SPIN MODAL -->
         <div id="wheel-modal">
             <!-- Inner wrapper for the pop-in zoom effect -->
@@ -1624,6 +1667,7 @@
         let startTime = 0;
         let currentMult = 1.00;
         let myBet = null;
+        let visualCashoutMult = null; // <-- ADD THIS
         let myPlayer = null;
         let myBalance = 0;
         let roundBets = {}; // Tracks live players
@@ -1993,69 +2037,69 @@
                         ctx.fillText(p.text, p.x, p.y);
                     }
                 }
-                // --- 8. DRAW PERSONAL CASHOUT MARKER (BC.GAME STYLE) ---
-                if (myBet && myBet.cashedOut && myBet.cashoutMult) {
-                    // Mathematically calculate the exact time you cashed out
-                    let myCashoutTime = Math.log(myBet.cashoutMult) / GROWTH_RATE;
+            // --- 8. DRAW PERSONAL CASHOUT MARKER (BC.GAME STYLE) ---
+            if (visualCashoutMult) {
+                // Mathematically calculate the exact time you cashed out
+                let myCashoutTime = Math.log(visualCashoutMult) / GROWTH_RATE;
 
-                    // Convert to live canvas coordinates (tracks automatically as the graph zooms!)
-                    let markX = padLeft + (myCashoutTime / maxX) * (cw - padLeft - padRight);
-                    let markY = (ch - padBottom) - ((myBet.cashoutMult - 1) / (maxY - 1)) * (ch - padBottom - padTop);
+                // Convert to live canvas coordinates (tracks automatically as the graph zooms!)
+                let markX = padLeft + (myCashoutTime / maxX) * (cw - padLeft - padRight);
+                let markY = (ch - padBottom) - ((visualCashoutMult - 1) / (maxY - 1)) * (ch - padBottom - padTop);
 
-                    // Only render if the marker is visible inside the canvas
-                    if (markX >= padLeft && markX <= cw - padRight) {
+                // Only render if the marker is visible inside the canvas
+                if (markX >= padLeft && markX <= cw - padRight) {
 
-                        // A. Draw Vertical Dashed Guideline to the Bottom Axis
+                    // A. Draw Vertical Dashed Guideline to the Bottom Axis
+                    ctx.beginPath();
+                    ctx.setLineDash([4, 4]); // 4px dashed line
+                    ctx.moveTo(markX, markY);
+                    ctx.lineTo(markX, ch - padBottom);
+                    ctx.strokeStyle = 'rgba(255, 213, 0, 0.4)'; // Soft translucent gold
+                    ctx.lineWidth = 1.5;
+                    ctx.stroke();
+                    ctx.setLineDash([]); // Reset dash format for other drawings
+
+                    // B. Draw Glowing Golden Dot on the Curve
+                    ctx.beginPath();
+                    ctx.arc(markX, markY, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffd500'; // Bright Golden Yellow
+                    ctx.shadowBlur = 12;
+                    ctx.shadowColor = '#ffd500';
+                    ctx.fill();
+                    ctx.shadowBlur = 0; // Reset shadow
+
+                    // C. Draw Floating Pill Badge (e.g. "2.50x")
+                    let badgeText = visualCashoutMult.toFixed(2) + 'x';
+                    ctx.font = 'bold 12px "VT323", monospace';
+                    let textWidth = ctx.measureText(badgeText).width;
+
+                    let badgeW = textWidth + 12;
+                    let badgeH = 18;
+                    let badgeX = markX - badgeW / 2;
+                    let badgeY = markY - 24; // Hovering right above the dot
+
+                    // Pill Background Box
+                    ctx.fillStyle = '#11121d';
+                    ctx.strokeStyle = '#ffd500';
+                    ctx.lineWidth = 1.5;
+
+                    if (ctx.roundRect) {
                         ctx.beginPath();
-                        ctx.setLineDash([4, 4]); // 4px dashed line
-                        ctx.moveTo(markX, markY);
-                        ctx.lineTo(markX, ch - padBottom);
-                        ctx.strokeStyle = 'rgba(255, 213, 0, 0.4)'; // Soft translucent gold
-                        ctx.lineWidth = 1.5;
-                        ctx.stroke();
-                        ctx.setLineDash([]); // Reset dash format for other drawings
-
-                        // B. Draw Glowing Golden Dot on the Curve
-                        ctx.beginPath();
-                        ctx.arc(markX, markY, 6, 0, Math.PI * 2);
-                        ctx.fillStyle = '#ffd500'; // Bright Golden Yellow
-                        ctx.shadowBlur = 12;
-                        ctx.shadowColor = '#ffd500';
+                        ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
                         ctx.fill();
-                        ctx.shadowBlur = 0; // Reset shadow
-
-                        // C. Draw Floating Pill Badge (e.g. "2.50x")
-                        let badgeText = myBet.cashoutMult.toFixed(2) + 'x';
-                        ctx.font = 'bold 12px "VT323", monospace';
-                        let textWidth = ctx.measureText(badgeText).width;
-
-                        let badgeW = textWidth + 12;
-                        let badgeH = 18;
-                        let badgeX = markX - badgeW / 2;
-                        let badgeY = markY - 24; // Hovering right above the dot
-
-                        // Pill Background Box
-                        ctx.fillStyle = '#11121d';
-                        ctx.strokeStyle = '#ffd500';
-                        ctx.lineWidth = 1.5;
-
-                        if (ctx.roundRect) {
-                            ctx.beginPath();
-                            ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
-                            ctx.fill();
-                            ctx.stroke();
-                        } else {
-                            ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
-                            ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
-                        }
-
-                        // Pill Badge Text
-                        ctx.fillStyle = '#ffd500';
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(badgeText, markX, badgeY + badgeH / 2 + 1);
+                        ctx.stroke();
+                    } else {
+                        ctx.fillRect(badgeX, badgeY, badgeW, badgeH);
+                        ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
                     }
+
+                    // Pill Badge Text
+                    ctx.fillStyle = '#ffd500';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(badgeText, markX, badgeY + badgeH / 2 + 1);
                 }
+            }
             }
         requestAnimationFrame(renderLoop);
         function setBtn(s) {
@@ -2205,19 +2249,23 @@
             ui.stRnd.innerText = p.totalBets;
 
             const wageredUsd = p.lifetimeWagered;
-            const wonUsd = p.lifetimeWon || 0;
+            const netProfitUsd = p.netProfit || 0; // Use true PnL instead of gross winnings
 
             // Wagered Display
             ui.stWag.innerText = `$${wageredUsd.toFixed(2)}`;
             const wagSolEl = document.getElementById('stat-wagered-sol');
             if (wagSolEl) wagSolEl.innerText = `(${p.lifetimeWagered.toFixed(2)} USDT)`;
 
-            // Total Won Display (Only goes up, always stays green!)
-            ui.stProf.innerText = `$${wonUsd.toFixed(2)}`;
-            ui.stProf.className = 'dash-card-val profit-pos';
+            // Net Profit Display (Dynamic Green for Profit / Red for Loss)
+            const isProfit = netProfitUsd >= 0;
+            const sign = isProfit ? '+' : '-';
+            const absProfit = Math.abs(netProfitUsd); // Remove negative symbol for formatting
+
+            ui.stProf.innerText = `${sign}$${absProfit.toFixed(2)}`;
+            ui.stProf.className = isProfit ? 'dash-card-val profit-pos' : 'dash-card-val profit-neg';
 
             const profSolEl = document.getElementById('stat-profit-sol');
-            if (profSolEl) profSolEl.innerText = `(${wonUsd.toFixed(2)} USDT)`;
+            if (profSolEl) profSolEl.innerText = `(${sign}${absProfit.toFixed(2)} USDT)`;
 
             // --- VIP Progress & Rakeback Sync ---
             const vip = getVipInfo(p.lifetimeWagered);
@@ -2605,12 +2653,22 @@
     
             // 1. CASHOUT ALWAYS TAKES ABSOLUTE PRIORITY
             if(ui.btn.classList.contains('btn-cashout')) {
-                // Instantly lock the UI locally so it feels incredibly responsive
                 if (myBet && !myBet.cashedOut && !myBet.isCashingOut) {
                     myBet.isCashingOut = true; 
                     ui.btn.classList.remove('btn-cashout');
                     ui.btn.classList.add('btn-disabled');
                     socket.emit('cash_out');
+    
+                    // 👇 ADD THIS FAILSAFE BLOCK 👇
+                    setTimeout(() => {
+                        // If 1 second passes and we are STILL stuck cashing out...
+                        if (myBet && myBet.isCashingOut && !myBet.cashedOut) {
+                            myBet.isCashingOut = false; // Unlock the bet state
+                            updateButtonState(); // Restore the yellow cashout button
+                            showToast('NETWORK DELAY: CLICK CASHOUT AGAIN!');
+                        }
+                    }, 1000); 
+                    // 👆 END FAILSAFE BLOCK 👆
                 }
                 return;
             }
@@ -2745,33 +2803,31 @@
         function renderHistoryBar() {
             // Render the last 15 items in the top floating bar using Color Tiers
             ui.hist.innerHTML = localHistory.slice(-15).map(v => 
-                `<div class="hist-badge ${getMultTierClass(v.mult)}">${v.mult.toFixed(2)}x</div>`
+                // ADDED ONCLICK AND CURSOR HERE
+                `<div class="hist-badge ${getMultTierClass(v.mult)}" style="cursor: pointer;" onclick="copyHistorySeed('${v.seed}', event)" title="Click to copy Seed">${v.mult.toFixed(2)}x</div>`
             ).join('');
             ui.hist.scrollLeft = ui.hist.scrollWidth; // Auto-scroll to latest
         }
 
         window.openHistoryModal = (event) => {
-            // Stop the click from hiding it immediately
             if (event) event.stopPropagation();
             playSfx('click');
 
             const listEl = document.getElementById('hm-list');
             listEl.innerHTML = '';
-
-            // Reverse so newest rounds are at the top
             const reversed = [...localHistory].reverse();
 
             reversed.forEach((r, i) => {
-                // Determine BC.GAME style color dots
-                let dotColor = 'var(--text-dim)'; // Grey (< 2x)
+                let dotColor = 'var(--text-dim)'; 
                 let textColor = 'var(--text-dim)';
 
                 if (r.mult >= 50) { dotColor = 'var(--magenta)'; textColor = 'var(--magenta)'; }
                 else if (r.mult >= 10) { dotColor = 'var(--yellow)'; textColor = 'var(--yellow)'; }
                 else if (r.mult >= 2) { dotColor = 'var(--green)'; textColor = 'var(--green)'; }
 
+                // ADDED ONCLICK AND CURSOR TO THE ROW HERE
                 listEl.innerHTML += `
-                    <div class="hp-row">
+                    <div class="hp-row" style="cursor: pointer;" onclick="copyHistorySeed('${r.seed}', event)" title="Click to copy Seed">
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div class="hp-dot" style="background: ${dotColor}; box-shadow: 0 0 6px ${dotColor}80;"></div>
                             <span style="font-family: 'Press Start 2P', monospace; font-size: 8px; color: #444;">#${localHistory.length - i}</span>
@@ -2781,8 +2837,33 @@
                 `;
             });
 
-            // Reveal the sleek popover
             document.getElementById('history-popover').classList.add('show');
+        };
+        // --- NEW: Copy Seed & Auto-Fill Verifier ---
+        window.copyHistorySeed = (seed, event) => {
+            if (event) event.stopPropagation();
+            if (!seed || seed === 'undefined') return showToast('SEED NOT REVEALED YET');
+
+            playSfx('click');
+            navigator.clipboard.writeText(seed);
+
+            const shieldSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="square" style="vertical-align: middle;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>`;
+            showToast(`${shieldSvg} SEED COPIED!`);
+
+            // Auto-fill the Provably Fair input box seamlessly
+            const verifyInput = document.getElementById('verify-seed');
+            if (verifyInput) verifyInput.value = seed;
+        };
+
+        // --- NEW: Algorithm Modal Toggles ---
+        window.openAlgoModal = () => {
+            playSfx('click'); 
+            document.getElementById('algo-modal').classList.add('show');
+        };
+
+        window.closeAlgoModal = () => {
+            playSfx('click');
+            document.getElementById('algo-modal').classList.remove('show');
         };
 
         socket.on('withdraw_success', (data) => {
@@ -3046,10 +3127,17 @@
             roundBets = d.activeBets || {};
 
             // Multi-Tab Memory Sync 
-            if (d.player && d.player.id && roundBets[d.player.id] && !roundBets[d.player.id].cashedOut) {
-                myBet = { amount: roundBets[d.player.id].amountUsd, cashedOut: false };
+            if (d.player && d.player.id && roundBets[d.player.id]) {
+                if (!roundBets[d.player.id].cashedOut) {
+                    myBet = { amount: roundBets[d.player.id].amountUsd, cashedOut: false };
+                } else {
+                    myBet = null; 
+                    // 👇 Restores the visual marker if they refresh mid-flight after cashing out
+                    visualCashoutMult = roundBets[d.player.id].cashoutMult; 
+                }
             } else {
                 myBet = null;
+                visualCashoutMult = null;
             }
 
             renderLiveTable();
@@ -3088,6 +3176,8 @@
 
             ui.mult.innerText = '1.00x'; ui.mult.style.color = 'var(--text-main)';
             ui.stat.innerText = 'PREPARING LAUNCH...'; ui.stat.style.color = 'var(--cyan)';
+            // 👇 ADD IT TO THIS CLEANUP LINE
+            myBet = null; visualCashoutMult = null; particles = []; explosion = []; roundBets = {}; cashoutParticles = [];
 
             // ADDED: cashoutParticles = []; to clear memory perfectly
             myBet = null; particles = []; explosion = []; roundBets = {}; cashoutParticles = []; 
@@ -3142,7 +3232,7 @@
 
             ui.mult.innerText = d.crashPoint.toFixed(2) + 'x';
             ui.mult.style.color = 'var(--red)'; ui.mult.style.textShadow = '0 0 20px var(--red)';
-            ui.stat.innerText = 'Crushed!'; ui.stat.style.color = 'var(--red)';
+            ui.stat.innerText = 'CRUSHED'; ui.stat.style.color = 'var(--red)';
             playSfx('crash');
 
             //createExplosion(cw/2, rocketY);
@@ -3182,11 +3272,26 @@
         });
 
         socket.on('cashout_success', (d) => {
-            if(myBet) myBet.cashedOut = true;
-            myBet.cashoutMult = parseFloat(d.multiplier); // <-- Add this line
+            if(myBet) {
+                myBet.cashedOut = true;
+                myBet.cashoutMult = parseFloat(d.multiplier);
+            }
+    
+            // 👇 ADD THIS LINE SO THE MARKER DRAWS IMMEDIATELY
+            visualCashoutMult = parseFloat(d.multiplier);
             updateStats(d.stats);
-            setBtn('WIN'); ui.btnSub.innerText = '+'+d.winAmount;
+            setBtn('WIN'); ui.btnSub.innerText = '+' + d.winAmount;
             playSfx('cashout');
+
+            // 👇 ADD THIS FIX BLOCK 👇
+            // RACE CONDITION FIX: If the crash message arrived milliseconds before this success message, 
+            // the local history incorrectly recorded a loss. We must retroactively correct it to a WIN!
+            if (state === 'CRASHED' && myBetsHistory.length > 0) {
+                myBetsHistory[0].mult = myBet.cashoutMult;
+                myBetsHistory[0].payout = myBet.amount * myBet.cashoutMult;
+                renderLiveTable(); // Instantly turns the row from gray to green!
+            }
+            // 👆 END FIX BLOCK 👆
 
             // Check the reason for cashout
             if (d.reason === 'MAX_PAYOUT') {
@@ -3248,9 +3353,16 @@
         });
 
         socket.on('error_msg', m => {
-            showToast('ERROR: '+m);
-            // If the server rejects the bet, force a UI refresh
-            if (myBet) myBet = null;
+            showToast('ERROR: ' + m);
+
+            // 👇 UPDATED: Only wipe the bet if we are on the ground. 
+            if (state === 'WAITING') {
+                if (myBet) myBet = null; // Bet placement failed
+            } else if (state === 'PLAYING' && myBet) {
+                // If we are flying and cashout failed, just unlock the button so they can try again!
+                myBet.isCashingOut = false; 
+            }
+
             updateButtonState();
         });
         socket.on('my_bets_data', (data) => {

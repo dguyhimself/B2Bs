@@ -1063,11 +1063,11 @@ io.on('connection', async (socket) => {
     // --- High Rollers Leaderboard ---
     socket.on('request_leaderboard', async () => {
         try {
-            // Fetch top 10 users ordered by net_profit (descending)
+            // Fetch top 10 users ordered by lifetime_wagered (descending)
             const { data, error } = await supabase
                 .from('users')
-                .select('username, net_profit')
-                .order('net_profit', { ascending: false })
+                .select('username, lifetime_wagered')
+                .order('lifetime_wagered', { ascending: false })
                 .limit(10);
 
             if (!error && data) {

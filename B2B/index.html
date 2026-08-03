@@ -1300,14 +1300,14 @@
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10c3 0 5 2 5 5s-2 5-5 5H7c-3 0-5-2-5-5s2-5 5-5z"/></svg>
                         HIGH ROLLERS
                     </div>
-                    <div style="color: var(--text-dim); font-size: 18px; font-family: 'VT323', monospace; letter-spacing: 1px;">Top 10 highest earners of all time</div>
+                    <div style="color: var(--text-dim); font-size: 18px; font-family: 'VT323', monospace; letter-spacing: 1px;">Top 10 highest wager volume of all time</div>
                 </div>
 
                 <!-- Minimalist Table Headers -->
                 <div style="display: flex; justify-content: space-between; padding: 0 10px 10px 10px; font-family: 'Press Start 2P', monospace; font-size: 8px; color: #5a5d7a; border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
                     <div style="flex: 0.5;">RANK</div>
                     <div style="flex: 2;">PLAYER</div>
-                    <div style="flex: 1.5; text-align: right;">NET PROFIT</div>
+                    <div style="flex: 1.5; text-align: right;">TOTAL WAGERED</div>
                 </div>
 
                 <!-- Leaderboard Target Container -->
@@ -2974,9 +2974,8 @@
             data.forEach((player, index) => {
                 const row = document.createElement('div');
 
-                // Convert their SOL profit to USD
-                const profitUsd = parseFloat(player.net_profit) * currentSolPrice;
-                const isPositive = profitUsd >= 0;
+                // Convert their wagered volume to USD
+                const wageredUsd = parseFloat(player.lifetime_wagered || 0) * currentSolPrice;
 
                 // Rank Badge & Card Styling Logic
                 let rankHtml = '';
@@ -3019,8 +3018,8 @@
                         ${player.username}
                     </div>
 
-                    <div style="flex: 1.5; text-align: right; color: ${isPositive ? 'var(--green)' : 'var(--text-dim)'}; ${isPositive ? 'text-shadow: 0 0 8px rgba(57, 255, 20, 0.3);' : ''}">
-                        ${isPositive ? '+' : ''}$${profitUsd.toFixed(2)}
+                    <div style="flex: 1.5; text-align: right; color: var(--cyan); text-shadow: 0 0 8px rgba(0, 243, 255, 0.3);">
+                        $${wageredUsd.toFixed(2)}
                     </div>
                 `;
                 lbBody.appendChild(row);

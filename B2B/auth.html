@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>RetroCrush - Welcome</title>
+    <!-- Browser Tab Favicon -->
+    <link rel="icon" type="image/png" href="/logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
     <script src="/socket.io/socket.io.js"></script>
     <style>
@@ -82,7 +84,7 @@
         /* Segmented Tabs */
         .auth-tabs { display: flex; background: #07070b; border: 1px solid #1a1c29; border-radius: 6px; padding: 4px; flex-shrink: 0; }
         .auth-tab { flex: 1; text-align: center; font-family: 'Press Start 2P', monospace; font-size: 8px; padding: 12px 0; color: var(--text-dim); cursor: pointer; border-radius: 4px; transition: all 0.2s ease; letter-spacing: 1px; }
-        .auth-tab.active { background: #23253b; color: var(--cyan); box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+        .auth-tab.active { background: #23253b; color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }
 
         .auth-form { display: none; flex-direction: column; gap: 15px; animation: fadeIn 0.3s ease; }
         .auth-form.active { display: flex; }
@@ -139,14 +141,14 @@
         /* Buttons */
         .btn-submit { 
             width: 100%; padding: 14px; margin-top: 5px;
-            background: var(--neon-blue); color: #000; border: none; 
+            background: var(--cyan); color: #000; border: none; 
             font-family: 'Press Start 2P', monospace; font-size: 10px; 
             cursor: pointer; border-radius: 6px; 
-            box-shadow: 0 4px 0 #008899, 0 0 15px rgba(0, 243, 255, 0.2); 
+            box-shadow: 0 4px 0 #009926, 0 0 15px rgba(38, 236, 0, 0.2); 
             transition: all 0.1s ease; letter-spacing: 1px;
             display: flex; flex-direction: column; align-items: center; gap: 6px;
         }
-        .btn-submit:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 5px 0 #008899, 0 0 20px rgba(0, 243, 255, 0.4); }
+        .btn-submit:hover { filter: brightness(1.1); transform: translateY(-1px); box-shadow: 0 5px 0 #009926, 0 0 20px rgba(38, 236, 0, 0.4); }
         .btn-submit:active { transform: translateY(4px); box-shadow: none; }
         
         .btn-submit-green { background: var(--cyan); box-shadow: 0 4px 0 #009926, 0 0 15px rgba(38, 236, 0, 0.2); }
@@ -300,10 +302,12 @@
                     <!-- NEW SCROLL WRAPPER -->
                     <div class="form-inputs-scroll">
                         <div class="form-group">
-                            <label class="input-label">USERNAME</label>
+                            <label class="input-label">EMAIL OR USERNAME</label>
                             <div class="input-wrapper">
                                 <div class="input-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>
-                                <input type="text" id="login-user" class="auth-input" placeholder="Enter username" maxlength="12" autocomplete="off">
+
+                                <!-- Changed placeholder and increased maxlength to 255 -->
+                                <input type="text" id="login-user" class="auth-input" placeholder="Email or Username" maxlength="255" autocomplete="username">
                             </div>
                         </div>
 
@@ -503,11 +507,11 @@
         }
 
         window.forgotPassword = () => {
-            // Play the retro error "buzzer" sound for comedic effect
-            playSfx('error');
-
-            // Drop the sarcastic toast down from the top
-            setStatus("DUH, YOU SHOULD'VE REMEMBERED IT NIGGA", 'error');
+            playSfx('click');
+            setStatus("CONTACT @RETROCRUSHS ON TELEGRAM FOR SUPPORT", 'info');
+            setTimeout(() => {
+                window.open('https://t.me/retrocrushs', '_blank');
+            }, 1500);
         };
 
         function setStatus(msg, type) {

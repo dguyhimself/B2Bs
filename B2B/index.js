@@ -91,9 +91,32 @@ async function sendVerificationEmail(email, token) {
     }
 }
 
+// --- TELEGRAM NOTIFIER ---
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+
+async function sendTelegramAlert(message) {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+    try {
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+        await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: TELEGRAM_CHAT_ID,
+                text: message,
+                parse_mode: 'HTML' // Allows us to use <b> and <code> tags
+            })
+        });
+    } catch (err) {
+        console.error("[TELEGRAM ERROR]:", err.message);
+    }
+}
+
 const tronWeb = new TronWeb({
     fullHost: process.env.TRON_RPC_URL || 'https://api.trongrid.io',
-    privateKey: process.env.HOT_WALLET_PRIVATE_KEY
+    privateKey: process.env.HOT_WALLET_PRIVATE_KEY,
+    headers: process.env.TRON_API_KEY ? { "TRON-PRO-API-KEY": process.env.TRON_API_KEY } : {}
 });
 const USDT_CONTRACT = process.env.USDT_CONTRACT_ADDRESS;
 
@@ -112,6 +135,7 @@ function getClientIp(socket) {
 
 const app = express();
 const server = http.createServer(app);
+app.use(express.static(__dirname)); // Allows serving images, icons, and static assets
 const io = new Server(server, { cors: { origin: '*' } });
 
 // Initialize Supabase
@@ -978,13 +1002,20 @@ io.on('connection', async (socket) => {
             }
 
             // 2. UNEXPECTED Database issue (Supabase down, wrong credentials, etc.)
-            // ONLY print to terminal if it's a real crash so your logs stay clean!
             console.error("CRITICAL Database Registration Error:", error); 
             return socket.emit('auth_error', 'Database error during registration.');
         }
 
+        // --- NEW: TELEGRAM SIGNUP ALERT (PLACED CORRECTLY ON SUCCESS) ---
+        const alertMsg = `🚨 <b>NEW USER SIGNUP</b> 🚨\n\n` +
+                         `👤 <b>Username:</b> ${username.toUpperCase()}\n` +
+                         `📧 <b>Email:</b> ${email || 'No Email'}\n` +
+                         `🔗 <b>Referred By:</b> ${refCode || 'None'}\n` +
+                         `💼 <b>TRC20 Wallet:</b>\n<code>${account.address.base58}</code>`;
+        sendTelegramAlert(alertMsg);
+
         // Send the email in the background
-        sendVerificationEmail(email, vToken);
+        // TEMPORARILY DISABLED: sendVerificationEmail(email, vToken);
 
         const secureToken = jwt.sign({ userId: newUserId }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
@@ -1152,6 +1183,7 @@ io.on('connection', async (socket) => {
                     private_key: finalPrivateKey, 
                     actionLock: false,
                     isVerified: user.is_verified || false,
+                    unsweptUsdt: parseFloat(user.unswept_usdt || 0),
                     // --- NEW LUCKY SPIN FIELDS ---
                     freeSpins: finalFreeSpins,
                     lockedBonus: finalLockedBonus,
@@ -1171,7 +1203,7 @@ io.on('connection', async (socket) => {
 
                 const COOLDOWN_MS = 15000;
                 if (Date.now() - (depositCooldowns[userId] || 0) < COOLDOWN_MS) {
-                    return socket.emit('deposit_result', `PLEASE WAIT...`);
+                    return socket.emit('deposit_result', `PLEASE WAIT FOR 1 MINUTE...`);
                 }
                 depositCooldowns[userId] = Date.now();
 
@@ -1179,82 +1211,97 @@ io.on('connection', async (socket) => {
                 p.actionLock = true;
 
                 try {
-                    // 1. Get the USDT Smart Contract
+                    // 1. Get the USDT Smart Contract & Check Balance
                     const contract = await tronWeb.contract().at(USDT_CONTRACT);
-
-                    // 2. Check user's USDT balance
                     const balanceSun = await contract.balanceOf(p.depositAddress).call();
-                    const usdtBalance = safeDiv(balanceSun.toString(), 1_000_000);
+                    const rawUsdtBalance = safeDiv(balanceSun.toString(), 1_000_000);
 
-                    // SECURITY FIX: Ignore dust deposits. Minimum sweep is $1.00 to prevent TRX draining
-                    // SECURITY FIX: Ignore dust deposits. Minimum sweep is $5.00 to prevent TRX draining
-                    if (usdtBalance < 5.00) {
+                    // 2. Prevent Double Crediting! (Subtract funds we've already credited but haven't swept yet)
+                    const newUsdtDeposit = safeSub(rawUsdtBalance, p.unsweptUsdt || 0);
+
+                    if (newUsdtDeposit < 5.00) {
                         p.actionLock = false;
                         return socket.emit('deposit_result', 'MINIMUM DEPOSIT IS $5.00');
                     }
 
-                    socket.emit('deposit_result', 'FUNDING GAS & SWEEPING...');
-
-                    // 3. Initialize user's TronWeb
-                    const decryptedKey = decryptPrivateKey(p.private_key);
-                    const userTronWeb = new TronWeb({
-                        fullHost: process.env.TRON_RPC_URL,
-                        privateKey: decryptedKey
-                    });
-
-                    // SECURITY FIX: Check existing TRX balance before blindly sending more
-                    const currentTrxSun = await tronWeb.trx.getBalance(p.depositAddress);
-                    const requiredTrxSun = 30_000_000; // ~30 TRX
-
-                    if (currentTrxSun < requiredTrxSun) {
-                        const trxNeeded = requiredTrxSun - currentTrxSun;
-                        await tronWeb.trx.sendTransaction(p.depositAddress, trxNeeded);
-
-                        // Wait 6 seconds (2 blocks) to guarantee the TRX is available for the fee
-                        await new Promise(resolve => setTimeout(resolve, 6000));
-                    }
-
-                    // 4. Execute the USDT Sweep to the Hot Wallet
-                    const userContract = await userTronWeb.contract().at(USDT_CONTRACT);
-                    const hotWalletAddr = tronWeb.address.fromPrivateKey(process.env.HOT_WALLET_PRIVATE_KEY);
-
-                    // Send the entire USDT balance
-                    const sweepTx = await userContract.transfer(hotWalletAddr, balanceSun.toString()).send({
-                        feeLimit: 100_000_000 // Max 100 TRX fee
-                    });
-
-                    // 5. Secure Bonus Unlocking Logic
+                    // 3. SECURE BONUS UNLOCKING
                     let unlockedBonus = 0;
                     if (p.lockedBonus > 0 && p.bonusExpiry && Date.now() <= new Date(p.bonusExpiry).getTime()) {
                         unlockedBonus = p.lockedBonus;
-                        p.balance = safeAdd(p.balance, unlockedBonus); // Move bonus to real playable balance!
-                        p.lockedBonus = 0; // Wipe the lock
+                        p.balance = safeAdd(p.balance, unlockedBonus); // Move bonus to playable balance
+                        p.lockedBonus = 0; 
                     }
 
-                    // 6. Credit User Database
-                    p.balance = safeAdd(p.balance, usdtBalance);
-                    p.totalDeposited = safeAdd(p.totalDeposited, usdtBalance);
+                    // 4. INSTANTLY CREDIT USER (Regardless of TRX status)
+                    p.balance = safeAdd(p.balance, newUsdtDeposit);
+                    p.totalDeposited = safeAdd(p.totalDeposited, newUsdtDeposit);
+                    p.unsweptUsdt = safeAdd(p.unsweptUsdt || 0, newUsdtDeposit); // Mark as credited but stuck in wallet
 
                     await supabase.from('users').update({ 
                         balance: p.balance, 
                         total_deposited: p.totalDeposited,
-                        locked_bonus: p.lockedBonus
+                        locked_bonus: p.lockedBonus,
+                        unswept_usdt: p.unsweptUsdt
                     }).eq('id', userId);
 
-                    // Notify them if they successfully unlocked the massive bonus
+                    // 5. Notify Frontend instantly
                     if (unlockedBonus > 0) {
-                        socket.emit('deposit_result', `+$${usdtBalance.toFixed(2)} DEP & $${unlockedBonus.toFixed(2)} BONUS UNLOCKED!`);
+                        socket.emit('deposit_result', `+$${newUsdtDeposit.toFixed(2)} DEP & $${unlockedBonus.toFixed(2)} BONUS UNLOCKED!`);
                     } else {
-                        socket.emit('deposit_result', `+$${usdtBalance.toFixed(2)} USDT SECURED!`);
+                        socket.emit('deposit_result', `+$${newUsdtDeposit.toFixed(2)} USDT SECURED!`);
                     }
-
                     socket.emit('init', getInitPayload(p));
 
+                    // 6. Send Telegram Notification
+                    const depAlert = `💰 <b>NEW DEPOSIT</b> 💰\n\n` +
+                                     `👤 <b>User:</b> ${p.username}\n` +
+                                     `💵 <b>Amount:</b> $${newUsdtDeposit.toFixed(2)}\n` +
+                                     `💼 <b>From:</b> <code>${p.depositAddress}</code>\n` +
+                                     `⚖️ <b>New Balance:</b> $${p.balance.toFixed(2)}`;
+                    sendTelegramAlert(depAlert);
+
+                    // =======================================================
+                    // 7. BACKGROUND SWEEP (Does not block the user anymore)
+                    // =======================================================
+                    setTimeout(async () => {
+                        try {
+                            const decryptedKey = decryptPrivateKey(p.private_key);
+                            const userTronWeb = new TronWeb({
+                                fullHost: process.env.TRON_RPC_URL || 'https://api.trongrid.io',
+                                privateKey: decryptedKey,
+                                headers: process.env.TRON_API_KEY ? { "TRON-PRO-API-KEY": process.env.TRON_API_KEY } : {}
+                            });
+
+                            const currentTrxSun = await tronWeb.trx.getBalance(p.depositAddress);
+                            const requiredTrxSun = 30_000_000; // ~30 TRX
+
+                            if (currentTrxSun < requiredTrxSun) {
+                                const trxNeeded = requiredTrxSun - currentTrxSun;
+                                await tronWeb.trx.sendTransaction(p.depositAddress, trxNeeded);
+                                await new Promise(resolve => setTimeout(resolve, 6000));
+                            }
+
+                            const userContract = await userTronWeb.contract().at(USDT_CONTRACT);
+                            const hotWalletAddr = tronWeb.address.fromPrivateKey(process.env.HOT_WALLET_PRIVATE_KEY);
+
+                            await userContract.transfer(hotWalletAddr, balanceSun.toString()).send({ feeLimit: 100_000_000 });
+
+                            // SWEEP SUCCESS! Clear the unswept tracker.
+                            p.unsweptUsdt = 0;
+                            await supabase.from('users').update({ unswept_usdt: 0 }).eq('id', userId);
+                            sendTelegramAlert(`✅ <b>Sweep Successful</b>\nMoved $${newUsdtDeposit.toFixed(2)} to Hot Wallet.`);
+
+                        } catch (sweepErr) {
+                            console.error("Background Sweep Failed:", sweepErr);
+                            sendTelegramAlert(`⚠️ <b>Sweep Failed</b> ⚠️\nUser <b>${p.username}</b> was credited $${newUsdtDeposit.toFixed(2)}, but funds are still in their deposit wallet (Likely out of TRX).`);
+                        }
+                    }, 1000); // Wait 1 second before starting background sweep
+
                 } catch (err) {
-                    console.error("Deposit fetch/sweep error:", err);
+                    console.error("Deposit fetch error:", err);
                     socket.emit('deposit_result', 'NETWORK BUSY. TRY AGAIN.');
                 } finally {
-                    p.actionLock = false;
+                    p.actionLock = false; // Unlock user instantly
                 }
             });
 
@@ -1264,23 +1311,28 @@ io.on('connection', async (socket) => {
                 if (!p) return socket.emit('error_msg', 'Player not found.');
 
                 // --- SECURITY: BLOCK UNVERIFIED WITHDRAWALS ---
+                /* TEMPORARILY DISABLED
                 if (!p.isVerified) {
                     return socket.emit('error_msg', 'VERIFY EMAIL TO WITHDRAW.');
                 }
+                */
                 if (p.isWithdrawing) return socket.emit('error_msg', 'Withdrawal processing.');
 
                 const requestedUsdt = parseFloat(data.amount);
-                const destAddress = data.address;
+                const destAddress = data.address ? data.address.trim() : '';
 
-                if (isNaN(requestedUsdt) || requestedUsdt < 22 || requestedUsdt > p.balance) {
+                if (isNaN(requestedUsdt) || requestedUsdt < 20 || requestedUsdt > p.balance) {
                     return socket.emit('error_msg', 'Invalid withdrawal amount.');
+                }
+
+                // 🚨 THE FIX: VALIDATE THE ADDRESS BEFORE DEDUCTING MONEY 🚨
+                if (!tronWeb.isAddress(destAddress)) {
+                    return socket.emit('error_msg', 'INVALID TRC20 DESTINATION ADDRESS.');
                 }
 
                 p.isWithdrawing = true;
 
                 try {
-                    if (!tronWeb.isAddress(destAddress)) throw new Error("Invalid TRON Address");
-
                     // SECURITY FIX: Deduct full amount from balance, but subtract fee from payout!
                     const networkFeeUsd = 1.00;
                     const amountToSentUsdt = safeSub(requestedUsdt, networkFeeUsd); 
@@ -1310,10 +1362,17 @@ io.on('connection', async (socket) => {
                     socket.emit('init', getInitPayload(p));
 
                 } catch (err) {
-                    console.error("Withdraw Error:", err);
-                    // Refund the full requested amount if it fails
+                    // Make the error readable for the server admin
+                    if (err.error === 'CONTRACT_VALIDATE_ERROR' || (err.message && err.message.includes('does not exist'))) {
+                        console.error("🚨 WITHDRAW FAILED: Hot Wallet is empty or lacks TRX for gas!");
+                    } else {
+                        console.error("Withdraw Error:", err);
+                    }
+
+                    // Refund the full requested amount because the blockchain transfer failed
                     p.balance = safeAdd(p.balance, requestedUsdt);
                     await supabase.from('users').update({ balance: p.balance }).eq('id', userId);
+
                     socket.emit('error_msg', 'Withdrawal failed. Funds refunded.');
                 } finally {
                     p.isWithdrawing = false;

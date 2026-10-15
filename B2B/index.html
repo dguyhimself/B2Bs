@@ -1842,9 +1842,25 @@
         // --- Modern Graphing Engine ---
         let cw, ch;
 
+let cw, ch;
+
         function resizeCanvas() {
-            cw = ui.canvas.width = ui.canvas.parentElement.clientWidth;
-            ch = ui.canvas.height = ui.canvas.parentElement.clientHeight;
+            const dpr = window.devicePixelRatio || 1;
+            const parent = ui.canvas.parentElement;
+            
+            cw = parent.clientWidth;
+            ch = parent.clientHeight;
+
+            // Set actual bitmap size scaled to real screen resolution
+            ui.canvas.width = Math.round(cw * dpr);
+            ui.canvas.height = Math.round(ch * dpr);
+
+            // Keep CSS layout size identical
+            ui.canvas.style.width = cw + 'px';
+            ui.canvas.style.height = ch + 'px';
+
+            // Scale canvas context so all existing coordinates stay the same
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         }
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
@@ -2068,48 +2084,50 @@
                         ctx.fillText(p.text, p.x, p.y);
                     }
                 }
-            // --- 8. DRAW PERSONAL CASHOUT MARKER (BC.GAME STYLE) ---
+// --- 8. DRAW PERSONAL CASHOUT MARKER (BC.GAME STYLE) ---
             if (visualCashoutMult) {
                 // Mathematically calculate the exact time you cashed out
                 let myCashoutTime = Math.log(visualCashoutMult) / GROWTH_RATE;
 
-                // Convert to live canvas coordinates (tracks automatically as the graph zooms!)
-                let markX = padLeft + (myCashoutTime / maxX) * (cw - padLeft - padRight);
-                let markY = (ch - padBottom) - ((visualCashoutMult - 1) / (maxY - 1)) * (ch - padBottom - padTop);
+                // Convert to live canvas coordinates and snap to whole pixels
+                let markX = Math.round(padLeft + (myCashoutTime / maxX) * (cw - padLeft - padRight));
+                let markY = Math.round((ch - padBottom) - ((visualCashoutMult - 1) / (maxY - 1)) * (ch - padBottom - padTop));
 
                 // Only render if the marker is visible inside the canvas
                 if (markX >= padLeft && markX <= cw - padRight) {
 
-                    // A. Draw Vertical Dashed Guideline to the Bottom Axis
+                    // A. Vertical Dashed Guideline
                     ctx.beginPath();
-                    ctx.setLineDash([4, 4]); // 4px dashed line
-                    ctx.moveTo(markX, markY);
-                    ctx.lineTo(markX, ch - padBottom);
-                    ctx.strokeStyle = 'rgba(255, 213, 0, 0.4)'; // Soft translucent gold
-                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([4, 4]);
+                    ctx.moveTo(markX + 0.5, markY);
+                    ctx.lineTo(markX + 0.5, ch - padBottom);
+                    ctx.strokeStyle = 'rgba(255, 213, 0, 0.45)';
+                    ctx.lineWidth = 1;
                     ctx.stroke();
-                    ctx.setLineDash([]); // Reset dash format for other drawings
+                    ctx.setLineDash([]); // Reset dash
 
-                    // B. Draw Glowing Golden Dot on the Curve
+                    // B. Glowing Golden Dot
                     ctx.beginPath();
-                    ctx.arc(markX, markY, 6, 0, Math.PI * 2);
-                    ctx.fillStyle = '#ffd500'; // Bright Golden Yellow
-                    ctx.shadowBlur = 12;
+                    ctx.arc(markX, markY, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = '#ffd500';
+                    ctx.shadowBlur = 8;
                     ctx.shadowColor = '#ffd500';
                     ctx.fill();
-                    ctx.shadowBlur = 0; // Reset shadow
+                    ctx.shadowBlur = 0; // Reset shadow immediately so it doesn't blur the box
 
-                    // C. Draw Floating Pill Badge (e.g. "2.50x")
+                    // C. Crisp Floating Pill Badge
                     let badgeText = visualCashoutMult.toFixed(2) + 'x';
-                    ctx.font = 'bold 12px "VT323", monospace';
+                    
+                    // High-legibility crisp sans-serif font (BC.GAME standard)
+                    ctx.font = '900 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
                     let textWidth = ctx.measureText(badgeText).width;
 
-                    let badgeW = textWidth + 12;
+                    let badgeW = Math.round(textWidth + 12);
                     let badgeH = 18;
-                    let badgeX = markX - badgeW / 2;
-                    let badgeY = markY - 24; // Hovering right above the dot
+                    let badgeX = Math.round(markX - badgeW / 2);
+                    let badgeY = Math.round(markY - 25);
 
-                    // Pill Background Box
+                    // Crisp Pill Box (Snapped to whole pixel boundaries)
                     ctx.fillStyle = '#11121d';
                     ctx.strokeStyle = '#ffd500';
                     ctx.lineWidth = 1.5;
@@ -2124,13 +2142,12 @@
                         ctx.strokeRect(badgeX, badgeY, badgeW, badgeH);
                     }
 
-                    // Pill Badge Text
+                    // Badge Text
                     ctx.fillStyle = '#ffd500';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(badgeText, markX, badgeY + badgeH / 2 + 1);
+                    ctx.fillText(badgeText, badgeX + Math.round(badgeW / 2), badgeY + Math.round(badgeH / 2));
                 }
-            }
             }
         requestAnimationFrame(renderLoop);
         function setBtn(s) {

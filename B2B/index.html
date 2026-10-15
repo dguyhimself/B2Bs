@@ -1174,15 +1174,48 @@
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                     REWARDS VAULT
                 </div>
-
-                <!-- NEW: Affiliate Tier Progress Bar -->
-                <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; border: 1px solid #1a1c29; margin-bottom: 15px;">
-                    <div style="display: flex; justify-content: space-between; font-family: 'Press Start 2P', monospace; font-size: 8px; margin-bottom: 8px;">
-                        <span id="aff-tier-name" style="color: var(--cyan);">LVL 1 AFFILIATE (0.5%)</span>
-                        <span id="aff-tier-next" style="color: var(--text-dim);">NEXT: 11 INVITES</span>
+<!-- UPGRADED MOBILE-FIRST AFFILIATE CARD -->
+                <div style="background: rgba(14, 15, 24, 0.75); border: 1px solid #23253b; border-radius: 8px; padding: 12px; margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Top: Badge & Commission Pill -->
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div id="aff-badge-icon" style="width: 26px; height: 26px; border-radius: 6px; background: rgba(38, 236, 0, 0.15); border: 1px solid var(--cyan); display: flex; align-items: center; justify-content: center; color: var(--cyan); font-family: 'Press Start 2P', monospace; font-size: 10px;">1</div>
+                            <div>
+                                <div id="aff-tier-title" style="font-family: 'Press Start 2P', monospace; font-size: 9px; color: #fff; letter-spacing: 0.5px;">LEVEL 1 AFFILIATE</div>
+                                <div style="font-family: 'VT323', monospace; font-size: 14px; color: var(--text-dim); line-height: 1.1;">Earn on every referee wager</div>
+                            </div>
+                        </div>
+                        <div id="aff-rate-pill" style="background: rgba(38, 236, 0, 0.12); border: 1px solid rgba(38, 236, 0, 0.4); color: var(--cyan); padding: 5px 8px; border-radius: 12px; font-family: 'Press Start 2P', monospace; font-size: 8px; text-shadow: 0 0 8px rgba(38, 236, 0, 0.4);">
+                            0.50%
+                        </div>
                     </div>
-                    <div style="width: 100%; height: 4px; background: #07070b; border-radius: 2px; overflow: hidden; border: 1px solid #1a1c29;">
-                        <div id="aff-progress-fill" style="height: 100%; width: 0%; background: var(--cyan); transition: width 0.5s;"></div>
+
+                    <!-- Middle: Progress Info & Glowing Bar -->
+                    <div>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-family: 'VT323', monospace; font-size: 16px;">
+                            <span id="aff-progress-count" style="color: #fff;">0 / 11 INVITED</span>
+                            <span id="aff-progress-next" style="color: var(--cyan); font-size: 14px;">11 more to Level 2</span>
+                        </div>
+                        <!-- 8px Rounded Glowing Track -->
+                        <div style="width: 100%; height: 8px; background: #07070b; border-radius: 999px; overflow: hidden; border: 1px solid #1a1c29;">
+                            <div id="aff-progress-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #1fa300, #26ec00); border-radius: 999px; box-shadow: 0 0 10px rgba(38, 236, 0, 0.5); transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);"></div>
+                        </div>
+                    </div>
+
+                    <!-- Bottom: Mini 3-Tier Roadmap (Mobile Friendly) -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding-top: 2px;">
+                        <div id="aff-step-1" style="background: rgba(38, 236, 0, 0.08); border: 1px solid rgba(38, 236, 0, 0.4); border-radius: 5px; padding: 6px 4px; text-align: center;">
+                            <div style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--cyan);">LVL 1</div>
+                            <div style="font-family: 'VT323', monospace; font-size: 13px; color: #fff;">0.5% (0+)</div>
+                        </div>
+                        <div id="aff-step-2" style="background: rgba(255, 255, 255, 0.02); border: 1px solid #1a1c29; border-radius: 5px; padding: 6px 4px; text-align: center;">
+                            <div style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim);">LVL 2</div>
+                            <div style="font-family: 'VT323', monospace; font-size: 13px; color: var(--text-dim);">0.75% (11+)</div>
+                        </div>
+                        <div id="aff-step-3" style="background: rgba(255, 255, 255, 0.02); border: 1px solid #1a1c29; border-radius: 5px; padding: 6px 4px; text-align: center;">
+                            <div style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim);">VIP</div>
+                            <div style="font-family: 'VT323', monospace; font-size: 13px; color: var(--text-dim);">1.25% (51+)</div>
+                        </div>
                     </div>
                 </div>
 
@@ -2380,37 +2413,100 @@
             const availableRakebackUsd = availableRakebackSol; // 1:1
             document.getElementById('vip-rakeback-val').innerText = `+$${availableRakebackUsd.toFixed(2)}`;
 
-            // --- NEW: Affiliate Tier Progress Math ---
-            let affRate = 0.50;
-            let affName = "LVL 1 AFFILIATE";
+// --- UPGRADED: Mobile Affiliate Tier Controller ---
+            const totalRef = p.totalReferred || 0;
+            let affRate = "0.50%";
+            let affTitle = "LEVEL 1 AFFILIATE";
+            let affBadge = "1";
             let affColor = "var(--cyan)";
-            let affNext = 11;
             let affProgress = 0;
+            let affCountText = `${totalRef} / 11 INVITED`;
+            let affNextText = `${Math.max(0, 11 - totalRef)} more to Level 2`;
 
-            if (p.totalReferred >= 51) {
-                affRate = 1.25;
-                affName = "VIP PARTNER";
+            const s1 = document.getElementById('aff-step-1');
+            const s2 = document.getElementById('aff-step-2');
+            const s3 = document.getElementById('aff-step-3');
+
+            // Reset all 3 step cards to neutral first
+            [s1, s2, s3].forEach(el => {
+                if (!el) return;
+                el.style.background = 'rgba(255, 255, 255, 0.02)';
+                el.style.borderColor = '#1a1c29';
+                el.children[0].style.color = 'var(--text-dim)';
+                el.children[1].style.color = 'var(--text-dim)';
+            });
+
+            if (totalRef >= 51) {
+                affRate = "1.25%";
+                affTitle = "VIP PARTNER";
+                affBadge = "★";
                 affColor = "var(--magenta)";
-                affNext = null;
                 affProgress = 100;
-            } else if (p.totalReferred >= 11) {
-                affRate = 0.75;
-                affName = "LVL 2 AFFILIATE";
+                affCountText = `${totalRef} INVITED (MAX TIER)`;
+                affNextText = "MAX COMMISSION";
+
+                if (s3) {
+                    s3.style.background = 'rgba(255, 0, 234, 0.1)';
+                    s3.style.borderColor = 'var(--magenta)';
+                    s3.children[0].style.color = 'var(--magenta)';
+                    s3.children[1].style.color = '#fff';
+                }
+            } else if (totalRef >= 11) {
+                affRate = "0.75%";
+                affTitle = "LEVEL 2 AFFILIATE";
+                affBadge = "2";
                 affColor = "var(--yellow)";
-                affNext = 51;
-                affProgress = ((p.totalReferred - 11) / 40) * 100;
+                affProgress = Math.min(100, ((totalRef - 11) / 40) * 100);
+                affCountText = `${totalRef} / 51 INVITED`;
+                affNextText = `${51 - totalRef} more to VIP`;
+
+                if (s2) {
+                    s2.style.background = 'rgba(255, 213, 0, 0.1)';
+                    s2.style.borderColor = 'var(--yellow)';
+                    s2.children[0].style.color = 'var(--yellow)';
+                    s2.children[1].style.color = '#fff';
+                }
             } else {
-                affProgress = (p.totalReferred / 11) * 100;
+                affProgress = Math.min(100, (totalRef / 11) * 100);
+
+                if (s1) {
+                    s1.style.background = 'rgba(38, 236, 0, 0.1)';
+                    s1.style.borderColor = 'var(--cyan)';
+                    s1.children[0].style.color = 'var(--cyan)';
+                    s1.children[1].style.color = '#fff';
+                }
             }
 
-            const affTierNameEl = document.getElementById('aff-tier-name');
-            if (affTierNameEl) {
-                affTierNameEl.innerText = `${affName} (${affRate}%)`;
-                affTierNameEl.style.color = affColor;
-                document.getElementById('aff-tier-next').innerText = affNext ? `NEXT: ${affNext} INVITES` : `MAX LEVEL`;
-                document.getElementById('aff-progress-fill').style.width = `${Math.min(affProgress, 100)}%`;
-                document.getElementById('aff-progress-fill').style.background = affColor;
-                document.getElementById('aff-progress-fill').style.boxShadow = `0 0 8px ${affColor}`;
+            // Sync Card Elements Safely
+            const badgeEl = document.getElementById('aff-badge-icon');
+            const titleEl = document.getElementById('aff-tier-title');
+            const rateEl = document.getElementById('aff-rate-pill');
+            const countEl = document.getElementById('aff-progress-count');
+            const nextEl = document.getElementById('aff-progress-next');
+            const fillEl = document.getElementById('aff-progress-fill');
+
+            if (badgeEl) {
+                badgeEl.innerText = affBadge;
+                badgeEl.style.borderColor = affColor;
+                badgeEl.style.color = affColor;
+                badgeEl.style.background = `${affColor}20`;
+            }
+            if (titleEl) titleEl.innerText = affTitle;
+            if (rateEl) {
+                rateEl.innerText = affRate;
+                rateEl.style.borderColor = affColor;
+                rateEl.style.color = affColor;
+                rateEl.style.boxShadow = `0 0 10px ${affColor}40`;
+            }
+            if (countEl) countEl.innerText = affCountText;
+            if (nextEl) {
+                nextEl.innerText = affNextText;
+                nextEl.style.color = affColor;
+            }
+            if (fillEl) {
+                fillEl.style.width = `${affProgress}%`;
+                fillEl.style.background = affColor;
+                fillEl.style.boxShadow = `0 0 12px ${affColor}`;
             }
 
             // --- Affiliate Sync ---

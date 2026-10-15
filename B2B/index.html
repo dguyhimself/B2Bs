@@ -1763,15 +1763,27 @@
             }
         };
 
-        // Seamlessly unlock audio on the very first tap or click anywhere on the page
-        document.addEventListener('click', function initAudio() {
+        // Seamlessly unlock audio on ANY interaction (tap, scroll, key, swipe)
+        function unlockAudio() {
             if (!actx) {
                 const AudioContext = window.AudioContext || window.webkitAudioContext;
                 actx = new AudioContext();
-                audioEnabled = true;
             }
-            document.removeEventListener('click', initAudio);
-        }, { once: true });
+            if (actx && actx.state === 'suspended') {
+                actx.resume();
+            }
+            audioEnabled = true;
+
+            // Remove all event listeners once activated
+            ['click', 'touchstart', 'touchend', 'pointerdown', 'keydown'].forEach(evt => {
+                document.removeEventListener(evt, unlockAudio);
+            });
+        }
+
+        // Listen for ANY user gesture
+        ['click', 'touchstart', 'touchend', 'pointerdown', 'keydown'].forEach(evt => {
+            document.addEventListener(evt, unlockAudio, { passive: true });
+        });
 
         function playTone(freq, type, duration, vol=0.1) {
             if(!audioEnabled || !actx) return;

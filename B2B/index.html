@@ -1097,74 +1097,87 @@
         <!-- PROFILE TAB (Personal) -->
         <div id="view-profile" class="view-tab">
 
-            <!-- VIP & Profile Header -->
-            <div class="dash-section" style="border-top: 2px solid var(--cyan); background: linear-gradient(180deg, rgba(17,18,29,0.9) 0%, rgba(0,0,0,0.4) 100%); padding: 15px;">
-                <div class="vip-header" style="align-items: center; margin-bottom: 0;">
+<!-- UPGRADED VIP PLAYER PASSPORT -->
+            <div style="background: linear-gradient(180deg, #121422 0%, #0a0b12 100%); border: 1px solid #23253b; border-radius: 10px; padding: 16px; margin-bottom: 12px; box-shadow: 0 8px 25px rgba(0,0,0,0.5); position: relative; overflow: hidden;">
+                <!-- Subtle Top Neon Accent Line -->
+                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 2px; background: linear-gradient(90deg, transparent, var(--cyan), transparent);"></div>
 
-                    <!-- Left: Big VIP Emblem -->
-                    <div id="vip-big-icon" class="vip-badge-container" style="width: 55px; height: 55px;"></div>
+                <!-- Profile Info Header -->
+                <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 14px;">
+                    <!-- Left: VIP Emblem Shield -->
+                    <div id="vip-big-icon" class="vip-badge-container" style="width: 52px; height: 52px; border-radius: 12px; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; border: 2px solid #cd7f32; box-shadow: 0 0 15px rgba(205, 127, 50, 0.25); flex-shrink: 0; transition: all 0.3s ease;"></div>
 
-                    <!-- Right: Profile Info -->
-                    <div class="vip-info" style="flex: 1; min-width: 0;">
-
-                        <!-- Top Row: Name/Email (Left) & Verify Badge (Right) -->
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-
-                            <!-- Name & Email Group -->
-                            <div style="display: flex; flex-direction: column; gap: 6px; overflow: hidden; padding-right: 10px;">
-                                <div id="stat-username" style="font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2;">PLAYER</div>
-
-                                <div style="font-family: 'VT323', monospace; font-size: 16px; color: var(--text-dim); display: flex; align-items: center; gap: 6px;">
-                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
-                                    <span id="stat-email-val" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Loading...</span>
-                                </div>
-                            </div>
-
-                            <!-- Verify Badge Group (TEMPORARILY HIDDEN) -->
-                            <div style="display: none !important; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; padding-top: 2px;">
-                                <div id="verify-badge" style="font-family: 'Press Start 2P', monospace; font-size: 7px; padding: 4px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 4px; border: 1px solid #333;">
-                                    <div id="verify-dot" style="width: 6px; height: 6px; border-radius: 50%; background: grey;"></div>
-                                    <span id="verify-text">CHECKING</span>
-                                </div>
-                                <button id="btn-resend-verify" onclick="resendVerify()" style="display: none; background: rgba(0,243,255,0.1); border: 1px solid var(--cyan); color: var(--cyan); font-family: 'Press Start 2P'; font-size: 6px; padding: 4px 6px; border-radius: 4px; cursor: pointer; transition: 0.2s;">RESEND</button>
-                            </div>
+                    <!-- Right: Identity Details -->
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px;">
+                            <div id="stat-username" style="font-family: 'Press Start 2P', monospace; font-size: 13px; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.5px;">PLAYER</div>
+                            <span style="font-family: 'VT323', monospace; font-size: 13px; color: var(--green); background: rgba(57, 255, 20, 0.1); border: 1px solid rgba(57, 255, 20, 0.3); padding: 2px 6px; border-radius: 4px;">ONLINE</span>
                         </div>
 
-                        <!-- Bottom Row: Clean Inset Progress Box -->
-                        <div style="background: none; padding: 10px; border-radius: 6px; border: none; margin-top: 12px;">
-                            <div style="display: flex; justify-content: space-between; font-size: 8px; font-family: 'Press Start 2P', monospace; margin-bottom: 8px;">
-                                <span id="vip-rank-name" style="color: #cd7f32; letter-spacing: 0.5px;">BRONZE</span>
-                                <span id="vip-next-name" style="color: #6c6f93;">NEXT: SILVER</span>
-                            </div>
-                            <div style="width: 100%; height: 6px; background: #07070b; border-radius: 3px; overflow: hidden; border: 1px solid #1a1c29;">
-                                <div id="vip-progress-fill" style="height: 100%; width: 0%; background: #cd7f32; box-shadow: 0 0 8px #cd7f32; transition: width 0.5s ease-out;"></div>
-                            </div>
-                            <div id="vip-progress-text" style="font-size: 12px; color: var(--text-dim); margin-top: 6px; text-align: right; font-family: 'VT323', monospace;">0.00 / 10.00 USDT</div>
+                        <!-- Email Pill -->
+                        <div style="font-family: 'VT323', monospace; font-size: 15px; color: var(--text-dim); display: flex; align-items: center; gap: 6px; background: rgba(0,0,0,0.3); padding: 3px 8px; border-radius: 4px; border: 1px solid #1a1c29; width: fit-content; max-width: 100%;">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                            <span id="stat-email-val" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Loading...</span>
                         </div>
-
                     </div>
+                </div>
+
+                <!-- VIP Progress Box -->
+                <div style="background: rgba(0,0,0,0.35); padding: 12px; border-radius: 8px; border: 1px solid #1a1c29;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 8px; font-family: 'Press Start 2P', monospace; margin-bottom: 8px;">
+                        <span id="vip-rank-name" style="color: #cd7f32; letter-spacing: 0.5px;">BRONZE</span>
+                        <span id="vip-next-name" style="color: var(--text-dim); font-size: 7px;">NEXT: SILVER</span>
+                    </div>
+
+                    <!-- Glowing 8px Track -->
+                    <div style="width: 100%; height: 8px; background: #07070b; border-radius: 999px; overflow: hidden; border: 1px solid #1e2033; position: relative;">
+                        <div id="vip-progress-fill" style="height: 100%; width: 0%; background: #cd7f32; border-radius: 999px; box-shadow: 0 0 10px rgba(205, 127, 50, 0.5); transition: width 0.6s ease-out;"></div>
+                    </div>
+
+                    <div id="vip-progress-text" style="font-size: 14px; color: var(--text-dim); margin-top: 6px; text-align: right; font-family: 'VT323', monospace; letter-spacing: 0.5px;">0.00 / 500.00 USDT</div>
                 </div>
             </div>
 
-            <!-- Personal Stats Grid -->
-            <div class="dashboard-grid">
-                <div class="dash-card">
-                    <div class="dash-card-label">WAGERED</div>
-                    <div class="dash-card-val" id="stat-wagered">$0.00</div>
-                    <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;" id="stat-wagered-sol">(0.0000 SOL)</div>
+            <!-- UPGRADED 2X2 PERSONAL STATS GRID -->
+            <div class="dashboard-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+                <!-- Card 1: Wagered -->
+                <div style="background: rgba(14, 15, 24, 0.75); border: 1px solid #1e2033; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); letter-spacing: 0.5px;">WAGERED</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="6" x2="12" y2="12"></line><line x1="12" y1="12" x2="16" y2="14"></line></svg>
+                    </div>
+                    <div class="dash-card-val" id="stat-wagered" style="font-family: 'VT323', monospace; font-size: 26px; color: #fff; line-height: 1;">$0.00</div>
+                    <div id="stat-wagered-sol" style="font-size: 12px; color: var(--text-dim); font-family: 'VT323', monospace; margin-top: 4px;">Lifetime Volume</div>
                 </div>
-                <div class="dash-card">
-                    <div class="dash-card-label">NET PROFIT</div>
-                    <div class="dash-card-val" id="stat-profit">$0.00</div>
-                    <div style="font-size: 10px; color: var(--text-dim); margin-top: 4px;" id="stat-profit-sol">(0.00 USDT)</div>
+
+                <!-- Card 2: Net Profit -->
+                <div style="background: rgba(14, 15, 24, 0.75); border: 1px solid #1e2033; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); letter-spacing: 0.5px;">NET PROFIT</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+                    </div>
+                    <div class="dash-card-val" id="stat-profit" style="font-family: 'VT323', monospace; font-size: 26px; color: var(--green); line-height: 1;">+$0.00</div>
+                    <div id="stat-profit-sol" style="font-size: 12px; color: var(--text-dim); font-family: 'VT323', monospace; margin-top: 4px;">Real PnL (USDT)</div>
                 </div>
-                <div class="dash-card">
-                    <div class="dash-card-label">ROUNDS</div>
-                    <div class="dash-card-val" id="stat-rounds" style="margin-top: 8px;">0</div>
+
+                <!-- Card 3: Total Rounds -->
+                <div style="background: rgba(14, 15, 24, 0.75); border: 1px solid #1e2033; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); letter-spacing: 0.5px;">ROUNDS</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--magenta)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path></svg>
+                    </div>
+                    <div class="dash-card-val" id="stat-rounds" style="font-family: 'VT323', monospace; font-size: 26px; color: #fff; line-height: 1;">0</div>
+                    <div style="font-size: 12px; color: var(--text-dim); font-family: 'VT323', monospace; margin-top: 4px;">Total Bets Played</div>
                 </div>
-                <div class="dash-card">
-                    <div class="dash-card-label">REFERRED</div>
-                    <div class="dash-card-val" id="stat-referred-count" style="margin-top: 8px;">0</div>
+
+                <!-- Card 4: Referred -->
+                <div style="background: rgba(14, 15, 24, 0.75); border: 1px solid #1e2033; border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                        <span style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim); letter-spacing: 0.5px;">REFERRED</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    </div>
+                    <div class="dash-card-val" id="stat-referred-count" style="font-family: 'VT323', monospace; font-size: 26px; color: var(--cyan); line-height: 1;">0</div>
+                    <div style="font-size: 12px; color: var(--text-dim); font-family: 'VT323', monospace; margin-top: 4px;">Active Invites</div>
                 </div>
             </div>
 

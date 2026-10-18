@@ -1081,13 +1081,13 @@ io.on('connection', async (socket) => {
     // Helper function to handle increasing strike counts for hackers
     function handleFailedLogin(ip, socket) {
         ipLoginFails[ip].count++;
-    
+
         // 5 Strikes and you are locked out for 15 minutes
         if (ipLoginFails[ip].count >= 5) {
             ipLoginFails[ip].lockoutUntil = Date.now() + (15 * 60 * 1000);
             return socket.emit('auth_error', 'TOO MANY FAILED ATTEMPTS. LOCKED FOR 15 MINS.');
         }
-    
+
         return socket.emit('auth_error', 'INVALID USERNAME OR PASSWORD');
     }
 
@@ -1667,6 +1667,94 @@ io.on('connection', async (socket) => {
 
             io.emit('chat_message', msgData);
         });
+            // --- CHAT TIPPING SYSTEM ---
+            socket.on('send_tip', async (data) => {
+                const p = players[userId];
+                if (!p) return socket.emit('error_msg', 'Login required to tip.');
+
+                if (p.actionLock || p.isWithdrawing) {
+                    return socket.emit('error_msg', 'Transaction in progress. Please wait.');
+                }
+
+                const { toUsername, amount } = data;
+                const validAmounts = [5, 10, 25, 50, 100];
+                const tipAmt = parseFloat(amount);
+
+                if (!validAmounts.includes(tipAmt)) {
+                    return socket.emit('error_msg', 'Invalid tip amount.');
+                }
+
+                if (isNaN(tipAmt) || p.balance < tipAmt) {
+                    return socket.emit('error_msg', 'INSUFFICIENT BALANCE FOR TIP');
+                }
+
+                if (!toUsername || toUsername.trim().toUpperCase() === p.username.toUpperCase()) {
+                    return socket.emit('error_msg', 'CANNOT TIP YOURSELF');
+                }
+
+                p.actionLock = true;
+
+                try {
+                    // 1. Look up recipient in Supabase
+                    const targetName = toUsername.trim();
+                    const { data: recipient, error } = await supabase
+                        .from('users')
+                        .select('id, username, balance')
+                        .ilike('username', targetName)
+                        .single();
+
+                    // If user doesn't exist in DB (e.g. they clicked on a bot), protect the illusion
+                    if (error || !recipient) {
+                        p.actionLock = false;
+                        return socket.emit('error_msg', 'PLAYER HAS DISABLED DIRECT TIPS.');
+                    }
+
+                    // 2. Deduct from Sender
+                    p.balance = safeSub(p.balance, tipAmt);
+                    await supabase.from('users').update({ balance: p.balance }).eq('id', userId);
+
+                    // 3. Credit Recipient
+                    if (players[recipient.id]) {
+                        // Recipient is online in RAM
+                        players[recipient.id].balance = safeAdd(players[recipient.id].balance, tipAmt);
+                        await supabase.from('users').update({ balance: players[recipient.id].balance }).eq('id', recipient.id);
+
+                        // Notify recipient
+                        io.to(recipient.id).emit('tip_received', { from: p.username, amount: tipAmt });
+                        io.to(recipient.id).emit('stats_update', players[recipient.id]);
+                    } else {
+                        // Recipient is offline in DB
+                        const newBal = safeAdd(recipient.balance, tipAmt);
+                        await supabase.from('users').update({ balance: newBal }).eq('id', recipient.id);
+                    }
+
+                    // 4. Notify Sender
+                    socket.emit('tip_success', { to: recipient.username, amount: tipAmt });
+                    socket.emit('stats_update', p);
+
+                    // 5. Broadcast announcement in Chat
+                    const tipBroadcast = {
+                        id: Date.now() + Math.random(),
+                        username: 'SYSTEM',
+                        text: `${p.username} tipped $${tipAmt.toFixed(2)} to ${recipient.username}!`,
+                        timestamp: Date.now(),
+                        wagered: 0,
+                        isSystem: true
+                    };
+                    chatHistory.push(tipBroadcast);
+                    if (chatHistory.length > 50) chatHistory.shift();
+                    io.emit('chat_message', tipBroadcast);
+
+                    // 6. Telegram Admin Alert
+                    sendTelegramAlert(`💸 <b>TIP SENT</b>\n👤 <b>${p.username}</b> sent <b>$${tipAmt.toFixed(2)}</b> to <b>${recipient.username}</b>`);
+
+                } catch (err) {
+                    console.error("[TIP ERROR]:", err.message);
+                    socket.emit('error_msg', 'Tip could not be processed.');
+                } finally {
+                    p.actionLock = false;
+                }
+            });
 
             // --- BC.GAME STYLE WELCOME WHEEL ---
             socket.on('spin_wheel', async () => {

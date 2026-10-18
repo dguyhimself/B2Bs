@@ -628,6 +628,68 @@
         }
         #chat-send-btn:active { transform: scale(0.95); box-shadow: none; }
 
+        /* --- CHAT TIPPING STYLES --- */
+        .chat-tip-btn {
+            background: rgba(255, 213, 0, 0.12);
+            border: 1px solid rgba(255, 213, 0, 0.4);
+            color: var(--yellow);
+            font-family: 'Press Start 2P', monospace;
+            font-size: 7px;
+            padding: 3px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.15s ease;
+            margin-left: 6px;
+            flex-shrink: 0;
+        }
+        .chat-tip-btn:hover {
+            background: var(--yellow);
+            color: #000;
+            box-shadow: 0 0 8px rgba(255, 213, 0, 0.5);
+            transform: scale(1.05);
+        }
+        .chat-tip-btn:active { transform: scale(0.95); }
+
+        /* Highlight for System Chat Announcements */
+        .chat-row.system-tip {
+            background: rgba(255, 213, 0, 0.08);
+            border: 1px solid rgba(255, 213, 0, 0.3);
+            box-shadow: 0 0 12px rgba(255, 213, 0, 0.15);
+        }
+
+        /* --- TIP MODAL --- */
+        #tip-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.92); z-index: 99999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+            opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
+        }
+        #tip-modal.show { opacity: 1; pointer-events: auto; }
+        #tip-modal-content {
+            background: #11121d; border: 1px solid var(--panel-border); border-radius: 10px; padding: 20px;
+            width: 88%; max-width: 360px;
+            transform: scale(0.9); transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        #tip-modal.show #tip-modal-content { transform: scale(1); }
+
+        .tip-amount-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+        }
+        .tip-chip {
+            background: rgba(255,255,255,0.03); border: 1px solid #23253b;
+            color: #fff; font-family: 'Press Start 2P', monospace; font-size: 9px;
+            padding: 12px 0; border-radius: 6px; cursor: pointer; transition: all 0.15s ease;
+        }
+        .tip-chip.active {
+            background: rgba(255, 213, 0, 0.15); border-color: var(--yellow);
+            color: var(--yellow); box-shadow: 0 0 10px rgba(255, 213, 0, 0.3);
+        }
+
         /* Flex constraint for max payout toast */
         .toast { display: flex; align-items: center; gap: 8px; }
         /* Auto-Bet Mode Tabs */
@@ -1523,6 +1585,34 @@
                     </div>
                 </div>
                 <button onclick="closeAlgoModal()" style="width: 100%; margin-top: 20px; padding: 12px; background: var(--panel-border); color: #fff; border: none; font-family: 'Press Start 2P'; font-size: 10px; cursor: pointer; border-radius: 4px; transition: 0.2s;" onmouseover="this.style.background='#333652'" onmouseout="this.style.background='var(--panel-border)'">CLOSE</button>
+            </div>
+        </div>
+        <!-- SLEEK TIP MODAL -->
+        <div id="tip-modal">
+            <div id="tip-modal-content">
+                <div style="font-family:'Press Start 2P'; color:var(--yellow); font-size:12px; margin-bottom: 6px; text-shadow:0 0 10px rgba(255,213,0,0.4); text-align:center;">
+                    SEND TIP
+                </div>
+                <div style="font-family:'VT323'; font-size:18px; color:var(--text-dim); text-align:center; margin-bottom:14px;">
+                    Tipping: <span id="tip-target-user" style="color:#fff; font-family:'Press Start 2P'; font-size:9px;">PLAYER</span>
+                </div>
+
+                <div style="font-family:'Press Start 2P'; font-size:7px; color:var(--text-dim); margin-bottom:8px;">SELECT AMOUNT:</div>
+                <div class="tip-amount-grid">
+                    <button class="tip-chip active" onclick="selectTipAmount(5, this)">$5</button>
+                    <button class="tip-chip" onclick="selectTipAmount(10, this)">$10</button>
+                    <button class="tip-chip" onclick="selectTipAmount(25, this)">$25</button>
+                    <button class="tip-chip" onclick="selectTipAmount(50, this)">$50</button>
+                    <button class="tip-chip" onclick="selectTipAmount(100, this)">$100</button>
+                </div>
+
+                <button id="btn-confirm-tip" onclick="confirmSendTip()" style="width:100%; margin-top:16px; padding:12px; background:var(--yellow); color:#000; border:none; font-family:'Press Start 2P'; font-size:9px; border-radius:6px; cursor:pointer; box-shadow:0 3px 0 #b39500; transition:all 0.1s;">
+                    CONFIRM $5 TIP
+                </button>
+
+                <div style="color:var(--text-dim); margin-top:14px; font-size:8px; font-family:'Press Start 2P'; cursor:pointer; text-align:center;" onclick="closeTipModal()" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-dim)'">
+                    CANCEL
+                </div>
             </div>
         </div>
         <!-- LUCKY SPIN MODAL -->
@@ -3178,35 +3268,126 @@
         function renderChatMessage(msg) {
             const container = document.getElementById('chat-messages');
 
-            // Remove empty state if it's there
             const emptyState = document.getElementById('chat-empty-state');
             if (emptyState) emptyState.remove();
 
             const row = document.createElement('div');
-            row.className = 'chat-row';
+            row.className = msg.isSystem ? 'chat-row system-tip' : 'chat-row';
 
-            // Escape HTML to prevent XSS attacks
             const safeText = msg.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-            // FIX: Convert server's raw timestamp to the user's Local Time Zone (e.g., 04:20 PM)
             const localTime = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
+            // Do not display tip button on system messages or on your own messages
+            const isMe = myPlayer && (msg.username.toUpperCase() === myPlayer.username.toUpperCase());
+            const tipButtonHtml = (!msg.isSystem && !isMe) ? `
+                <button class="chat-tip-btn" onclick="openTipModal('${msg.username}', event)" title="Tip ${msg.username}">
+                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path></svg>
+                    TIP
+                </button>
+            ` : '';
+
+            // Clean SVG icon for SYSTEM instead of the megaphone emoji
+            const systemBadgeSvg = `
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: middle;">
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                </svg>
+            `;
+
+            // Clean SVG coin/transfer icon prepended to the system message text
+            const systemTipPrefixSvg = msg.isSystem ? `
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px;">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path>
+                </svg>
+            ` : '';
+
             const vip = getVipInfo(msg.wagered);
+            const userColor = msg.isSystem ? 'var(--yellow)' : vip.color;
+            const badgeIcon = msg.isSystem ? systemBadgeSvg : vip.badge;
+
             row.innerHTML = `
                 <div class="chat-header-row">
                     <div class="chat-user-info">
-                        ${vip.badge}
-                        <span class="chat-name" style="color: ${vip.color}; text-shadow: 0 0 5px ${vip.color}40;">${msg.username}</span>
+                        ${badgeIcon}
+                        <span class="chat-name" style="color: ${userColor}; text-shadow: 0 0 5px ${userColor}40;">${msg.username}</span>
+                        ${tipButtonHtml}
                     </div>
                     <span class="chat-time">${localTime}</span>
                 </div>
-                <div class="chat-text">${safeText}</div>
+                <div class="chat-text" style="${msg.isSystem ? 'color: var(--yellow); font-weight: normal;' : ''}">${systemTipPrefixSvg}${safeText}</div>
             `;
             container.appendChild(row);
 
-            // Auto-scroll to bottom
             container.scrollTop = container.scrollHeight;
         }
+
+        // --- CHAT TIPPING CONTROLLER ---
+        let currentTipTarget = '';
+        let currentTipAmount = 5;
+
+        window.openTipModal = (username, event) => {
+            if (event) event.stopPropagation();
+            if (requireAuth()) return;
+
+            currentTipTarget = username;
+            currentTipAmount = 5;
+
+            document.getElementById('tip-target-user').innerText = username;
+            document.getElementById('btn-confirm-tip').innerText = `CONFIRM $5 TIP`;
+
+            // Reset buttons to $5 active
+            document.querySelectorAll('.tip-chip').forEach((btn, idx) => {
+                btn.classList.toggle('active', idx === 0);
+            });
+
+            playSfx('click');
+            document.getElementById('tip-modal').classList.add('show');
+        };
+
+        window.closeTipModal = () => {
+            playSfx('click');
+            document.getElementById('tip-modal').classList.remove('show');
+        };
+
+        window.selectTipAmount = (amount, btnEl) => {
+            playSfx('click');
+            currentTipAmount = amount;
+
+            document.querySelectorAll('.tip-chip').forEach(b => b.classList.remove('active'));
+            if (btnEl) btnEl.classList.add('active');
+
+            document.getElementById('btn-confirm-tip').innerText = `CONFIRM $${amount} TIP`;
+        };
+
+        window.confirmSendTip = () => {
+            if (!currentTipTarget || !currentTipAmount) return;
+
+            if (myBalance < currentTipAmount) {
+                playSfx('error');
+                return showToast('INSUFFICIENT BALANCE FOR TIP');
+            }
+
+            playSfx('click');
+            socket.emit('send_tip', {
+                toUsername: currentTipTarget,
+                amount: currentTipAmount
+            });
+
+            closeTipModal();
+        };
+
+        socket.on('tip_success', (data) => {
+            playSfx('cashout');
+            const coinSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path></svg>`;
+            showToast(`${coinSvg} SENT $${data.amount.toFixed(2)} TIP TO ${data.to}!`);
+        });
+
+        socket.on('tip_received', (data) => {
+            playSfx('cashout');
+            const giftSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><polyline points="20 12 20 22 4 22 4 12"></polyline><rect x="2" y="7" width="20" height="5"></rect><line x1="12" y1="22" x2="12" y2="7"></line></svg>`;
+            showToast(`${giftSvg} RECEIVED $${data.amount.toFixed(2)} TIP FROM ${data.from}!`);
+        });
 
         window.sendChat = () => {
             if (requireAuth()) return;

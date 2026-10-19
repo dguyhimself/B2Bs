@@ -588,6 +588,14 @@
 
         #chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
 
+        /* High-Priority Staff Broadcast Card (Electric Cyan - Not Red) */
+        .chat-row.admin-alert-row {
+            background: linear-gradient(135deg, rgba(0, 243, 255, 0.08) 0%, rgba(17, 18, 29, 0.95) 100%);
+            border: 1px solid rgba(0, 243, 255, 0.45);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.15);
+            animation: slideUp 0.3s ease-out;
+        }
+
         /* Empty State */
         .chat-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; opacity: 0.5; color: var(--text-dim); gap: 10px; font-family: 'Press Start 2P', monospace; font-size: 10px; text-align: center; line-height: 1.5; }
         .chat-empty svg { stroke: var(--text-dim); width: 48px; height: 48px; margin-bottom: 10px; opacity: 0.8; }
@@ -693,6 +701,12 @@
             background: rgba(255, 213, 0, 0.08);
             border: 1px solid rgba(255, 213, 0, 0.3);
             box-shadow: 0 0 12px rgba(255, 213, 0, 0.15);
+        }
+        /* Punishment System Messages (Mute / Ban) */
+        .chat-row.system-punish {
+            background: rgba(255, 51, 51, 0.08);
+            border: 1px solid rgba(255, 51, 51, 0.4);
+            box-shadow: 0 0 12px rgba(255, 51, 51, 0.15);
         }
 
         /* --- TIP MODAL --- */
@@ -800,44 +814,96 @@
         .live-row.crashed .col-mult { color: var(--red); }
         .live-row.crashed .col-profit { color: var(--text-dim); }
         /* --- LUCKY WHEEL CSS --- */
-        /* Spin Button Animation */
+        #wheel-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 99999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(5px);
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+
+        #wheel-modal.show { opacity: 1; pointer-events: auto; }
+
+        #wheel-modal-content {
+            background: linear-gradient(180deg, #1a1c29 0%, #0a0a10 100%);
+            border: 2px solid var(--yellow);
+            border-radius: 20px;
+            padding: 30px 20px;
+            width: 90%;
+            max-width: 360px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.9), inset 0 0 30px rgba(255, 213, 0, 0.15);
+            display: flex; flex-direction: column; align-items: center;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #wheel-modal.show #wheel-modal-content { transform: scale(1); }
+
+        .wheel-container { 
+            position: relative; width: 280px; height: 280px; margin: 20px auto; 
+            filter: none;
+        }
+
+        .wheel-pointer { 
+            position: absolute; top: -14px; left: 50%; transform: translateX(-50%); 
+            z-index: 10; width: 38px; height: 38px;
+            filter: drop-shadow(0 6px 6px rgba(0,0,0,0.7));
+        }
+
+        .wheel { 
+            width: 100%; height: 100%; border-radius: 50%; 
+            border: 6px solid #23253b; position: relative; overflow: hidden; 
+            transition: transform 4s cubic-bezier(0.17, 0.67, 0.12, 1); /* Sexy slow-down physics */
+            box-shadow: 0 0 0 4px var(--yellow); 
+            background: conic-gradient(from -22.5deg,
+                #151726 0deg 45deg, #11121d 45deg 90deg, 
+                #151726 90deg 135deg, #11121d 135deg 180deg, 
+                #151726 180deg 225deg, #11121d 225deg 270deg, 
+                #151726 270deg 315deg, #2b112c 315deg 360deg /* $50 Segment gets dark purple bg! */
+            ); 
+        }
+
+        /* Inner Roulette Hub */
+        .wheel::after {
+            content: ''; position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 45px; height: 45px; background: #23253b;
+            border: 4px solid var(--yellow); border-radius: 50%;
+            box-shadow: 0 0 15px rgba(0,0,0,0.8);
+        }
+
+        .wheel-seg { 
+            position: absolute; top: 0; left: 50%; width: 80px; height: 50%; 
+            transform-origin: bottom center; transform: translateX(-50%) rotate(calc(var(--i) * 45deg));
+            display: flex; justify-content: center; padding-top: 18px; 
+            font-family: 'Press Start 2P', monospace; font-size: 11px; 
+            color: var(--cyan); text-shadow: 0 2px 5px rgba(0,0,0,0.9);
+        }
+
+        /* Massive 3D Call to Action Button */
         #spin-btn {
-            margin-top: 30px; 
-            padding: 15px 30px; 
-            background: var(--cyan); 
-            color: #000;
-            border: none; 
-            border-radius: 6px; 
-            font-family: 'Press Start 2P', monospace; 
-            font-size: 12px; 
-            cursor: pointer; 
-            box-shadow: 0 4px 0 #009926; 
-            transition: all 0.1s ease;
+            width: 100%; margin-top: 10px; padding: 20px 20px; 
+            background: linear-gradient(180deg, var(--yellow) 0%, #ccaa00 100%); 
+            color: #000; border: none; border-radius: 10px; 
+            font-family: 'Press Start 2P', monospace; font-size: 14px; 
+            cursor: pointer; box-shadow: 0 6px 0 #997a00, 0 10px 25px rgba(255, 213, 0, 0.35); 
+            transition: all 0.1s ease; text-shadow: 0 1px 0 rgba(255,255,255,0.4);
+            display: flex; justify-content: center; align-items: center; gap: 8px;
         }
 
         #spin-btn:active {
-            transform: translateY(4px); /* Pushes the button down */
-            box-shadow: none; /* Removes the 3D bottom edge so it looks pressed flat */
+            transform: translateY(6px); 
+            box-shadow: 0 0 0 #997a00, 0 4px 10px rgba(255, 213, 0, 0.3); 
         }
-        .wheel-container { position: relative; width: 260px; height: 260px; margin: 0 auto; }
-        .wheel-pointer { position: absolute; top: -15px; left: 50%; transform: translateX(-50%); z-index: 10; font-size: 30px; color: var(--yellow); text-shadow: 0 0 10px #000; }
-        .wheel { 
-            width: 100%; height: 100%; border-radius: 50%; 
-            border: 4px solid var(--panel-border); position: relative; overflow: hidden; 
-            transition: transform 4s cubic-bezier(0.17, 0.67, 0.15, 1); /* Sexy slow-down physics */
-            box-shadow: 0 0 20px rgba(0,0,0,0.8); 
-            /* Creates the 8 distinct background slices natively in CSS */
-            background: conic-gradient(from -22.5deg,
-                #11121d 0deg 45deg, #1a1c29 45deg 90deg, #11121d 90deg 135deg, #1a1c29 135deg 180deg, 
-                #11121d 180deg 225deg, #1a1c29 225deg 270deg, #11121d 270deg 315deg, #1a1c29 315deg 360deg
-            ); 
+
+        .wheel-close-btn {
+            background: transparent; border: 1px solid rgba(255,255,255,0.1); 
+            color: var(--text-dim); padding: 12px 20px; border-radius: 8px; 
+            font-family: 'Press Start 2P', monospace; font-size: 9px; 
+            margin-top: 20px; cursor: pointer; transition: 0.2s; width: 100%;
         }
-        .wheel-seg { 
-            position: absolute; top: 0; left: 50%; width: 50px; height: 50%; 
-            transform-origin: bottom center; transform: translateX(-50%) rotate(calc(var(--i) * 45deg));
-            display: flex; justify-content: center; padding-top: 15px; 
-            font-family: 'Press Start 2P', monospace; font-size: 10px; color: var(--cyan); text-shadow: 0 0 5px #000;
-        }
+
+        .wheel-close-btn:hover { background: rgba(255,255,255,0.05); color: #fff; }
         /* --- FULLSCREEN INITIAL LOADING OVERLAY --- */
         #loading-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100dvh;
@@ -1109,16 +1175,6 @@
                     WALLET
                 </div>
 
-
-                <!-- 24/7 Telegram Support Icon -->
-                <a href="https://t.me/retrocrushs" target="_blank" onclick="playSfx('click')" style="color: var(--text-dim); cursor: pointer; display: flex; align-items: center; text-decoration: none; filter: none; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'" title="Contact Support">
-                    <!-- Help / FAQ Bubble Icon -->
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
-                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                    </svg>
-                </a>
 
                 <!-- Audio Toggle -->
                 <button id="mute-btn" onclick="toggleAudio()" style="background: none; border: none; color: var(--text-dim); cursor: pointer; padding: 0; outline: none; transition: color 0.2s; display: flex; align-items: center;">
@@ -1751,22 +1807,36 @@
         <div id="wheel-modal">
             <!-- Inner wrapper for the pop-in zoom effect -->
             <div id="wheel-modal-content">
-                <div style="font-family:'Press Start 2P'; color:var(--yellow); font-size:16px; margin-bottom: 5px; text-shadow:0 0 10px var(--yellow);">LUCKY SPIN</div>
 
-                <!-- NEW WARNING LABEL -->
-                <div style="font-size: 14px; color: #ff732f; font-family: 'VT323', monospace; margin-bottom: 20px;">Use your spins before they expire in 24 hours!</div>
+                <!-- Glowing Header -->
+                <div style="font-family:'Press Start 2P'; color:var(--yellow); font-size:18px; margin-bottom: 8px; text-shadow:0 0 15px rgba(255, 213, 0, 0.5); display: flex; align-items: center; gap: 10px;">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon></svg>
+                    LUCKY SPIN
+                </div>
+
+                <!-- Descriptive Subtext -->
+                <div style="font-size: 15px; color: var(--text-main); font-family: 'VT323', monospace; margin-bottom: 5px; text-align: center; line-height: 1.3;">
+                    Win up to <span style="color: var(--magenta); text-shadow: 0 0 8px rgba(255,0,234,0.4);">+$50.00</span> instantly!
+                    <br>
+                    <span style="color: #ff732f; font-size: 14px;">Spins expire 24 hours after signup.</span>
+                </div>
 
                 <div class="wheel-container">
-                    <div class="wheel-pointer">▼</div>
+                    <!-- Crisp custom SVG pointer pointing down -->
+                    <svg class="wheel-pointer" viewBox="0 0 24 24" fill="var(--yellow)" stroke="#11121d" stroke-width="2">
+                        <path d="M12 22L2 4H22L12 22Z"></path>
+                    </svg>
+
                     <div class="wheel" id="spin-wheel">
-                        <div class="wheel-seg" style="--i:0; color: #6c6f93;"><span>$0</span></div>
-                        <div class="wheel-seg" style="--i:1;"><span>$1</span></div>
-                        <div class="wheel-seg" style="--i:2; color: #6c6f93;"><span>$0</span></div>
-                        <div class="wheel-seg" style="--i:3;"><span>$5</span></div>
-                        <div class="wheel-seg" style="--i:4; color: #6c6f93;"><span>$0</span></div>
-                        <div class="wheel-seg" style="--i:5;"><span>$10</span></div>
-                        <div class="wheel-seg" style="--i:6; color: #6c6f93;"><span>$0</span></div>
-                        <div class="wheel-seg" style="--i:7; color: var(--magenta);"><span>$50</span></div>
+                        <div class="wheel-seg" style="--i:0; color: #5a5d7a;"><span>$0</span></div>
+                        <div class="wheel-seg" style="--i:1; color: var(--green);"><span>$1</span></div>
+                        <div class="wheel-seg" style="--i:2; color: #5a5d7a;"><span>$0</span></div>
+                        <div class="wheel-seg" style="--i:3; color: var(--green);"><span>$5</span></div>
+                        <div class="wheel-seg" style="--i:4; color: #5a5d7a;"><span>$0</span></div>
+                        <div class="wheel-seg" style="--i:5; color: var(--yellow);"><span>$10</span></div>
+                        <div class="wheel-seg" style="--i:6; color: #5a5d7a;"><span>$0</span></div>
+                        <!-- $50 receives the magenta highlight to match its dark purple background -->
+                        <div class="wheel-seg" style="--i:7; color: var(--magenta); font-size: 14px; text-shadow: 0 0 8px rgba(255,0,234,0.8);"><span>$50</span></div>
                     </div>
                 </div>
 
@@ -1774,8 +1844,8 @@
                     SPIN NOW (<span id="spin-count">0</span>)
                 </button>
 
-                <!-- Triggers the close function -->
-                <div style="color:var(--text-dim); margin-top:25px; font-size:10px; font-family:'Press Start 2P'; cursor: pointer; transition: color 0.2s;" onclick="closeWheelModal()" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-dim)'">CLOSE</div>
+                <!-- Clean Full-Width Close Button -->
+                <button class="wheel-close-btn" onclick="closeWheelModal()">CLOSE WINDOW</button>
             </div>
         </div>
 
@@ -2611,6 +2681,19 @@
             if(!p) return;
             myPlayer = p; // Update global cache
             myBalance = p.balance; // Note: myBalance is now USDT/USD
+    
+            // --- CHAT LOCK FOR NON-DEPOSITORS ---
+            const chatInput = document.getElementById('chat-input');
+            if (chatInput) {
+                if (p.totalDeposited > 0) {
+                    chatInput.placeholder = "Type message...";
+                    chatInput.readOnly = false;
+                } else {
+                    chatInput.placeholder = "Deposit money to chat...";
+                    chatInput.readOnly = true;
+                }
+            }
+            // ------------------------------------
 
             // Calculate USD value
             const usdValue = myBalance;
@@ -3453,6 +3536,7 @@
         // --- UPGRADED CHAT RENDERER ---
         // (Added isHistory flag so we don't play 50 notification sounds when the page loads!)
         // --- UPGRADED CHAT RENDERER ---
+        // --- UPGRADED CHAT RENDERER ---
         function renderChatMessage(msg, isHistory = false) {
             const container = document.getElementById('chat-messages');
             const emptyState = document.getElementById('chat-empty-state');
@@ -3505,59 +3589,113 @@
                 return;
             }
 
-            // --- 2. STANDARD MESSAGES WITH MENTIONS ---
-            row.className = msg.isSystem ? 'chat-row system-tip' : 'chat-row';
-            const safeText = msg.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-            const localTime = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            // 🚨 --- 2. RENDER HIGH-PRIORITY STAFF ALERT (/alert) --- 🚨
+            // --- 2. RENDER HIGH-PRIORITY STAFF BROADCAST (/alert) ---
+            if (msg.isAdminAlert) {
+                row.className = 'chat-row admin-alert-row';
+                const localTime = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const safeText = msg.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-            // 🎯 @USERNAME MENTION PARSER
-            let isMentioned = false;
-            const formattedText = safeText.replace(/@([A-Za-z0-9_]+)/g, (match, username) => {
-                // If it mentions YOU
-                if (myPlayer && username.toUpperCase() === myPlayer.username.toUpperCase()) {
-                    isMentioned = true;
-                    return `<span style="color: #000; background: var(--cyan); padding: 1px 4px; border-radius: 4px;">${match}</span>`;
-                }
-                // If it mentions SOMEONE ELSE
-                return `<span style="color: var(--yellow);">${match}</span>`;
-            });
-
-            // If you were mentioned, highlight the message box and play sound!
-            if (isMentioned) {
-                row.style.border = '1px solid rgba(0, 243, 255, 0.4)';
-                row.style.background = 'rgba(0, 243, 255, 0.08)';
-                if (!isHistory) playSfx('mention'); 
+                row.innerHTML = `
+                    <div class="chat-header-row" style="border-bottom: 1px solid rgba(0, 243, 255, 0.25); padding-bottom: 5px;">
+                        <div class="chat-user-info" style="display:flex; align-items:center; gap:6px;">
+                            <!-- Pure SVG Broadcast Bell Icon -->
+                            <div class="chat-badge" style="background: rgba(0, 243, 255, 0.15); border: 1px solid var(--neon-blue); color: var(--neon-blue); box-shadow: 0 0 8px rgba(0, 243, 255, 0.35);" title="Official Broadcast">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                                    <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                                </svg>
+                            </div>
+                            <span class="chat-name" style="color: var(--neon-blue); letter-spacing: 0.5px; font-size: 8px;">STAFF BROADCAST (${msg.username})</span>
+                        </div>
+                        <span class="chat-time" style="color: var(--neon-blue); opacity: 0.8;">${localTime}</span>
+                    </div>
+                    <div class="chat-text" style="color: #ffffff; font-size: 19px; line-height: 1.3; padding-top: 4px;">
+                        ${safeText}
+                    </div>
+                `;
+                container.appendChild(row);
+                container.scrollTop = container.scrollHeight;
+                if (!isHistory) playSfx('launch');
+                return;
             }
 
-            const isMe = myPlayer && (msg.username.toUpperCase() === myPlayer.username.toUpperCase());
+            // --- 3. STANDARD, SYSTEM, & PUNISHMENT MESSAGES ---
+                // Detect if this is a penalty (mute/ban) or tip celebration
+                const isPunish = msg.systemType === 'punish' || (msg.isSystem && (msg.text.includes('muted') || msg.text.includes('banned')));
+                const isTipSystem = msg.systemType === 'tip' || (msg.isSystem && msg.text.includes('tipped'));
 
-            // 💸 Action Buttons (Tip & Reply grouped on the right)
-            const actionsHtml = (!msg.isSystem && !isMe) ? `
-                <div style="display:flex; align-items:center; gap:6px;">
-                    <button class="chat-tip-btn" onclick="openTipModal('${msg.username}', event)" title="Tip">
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path></svg>
-                        TIP
-                    </button>
-                    <button class="chat-action-btn" onclick="replyToUser('${msg.username}', event)" title="Reply">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
-                    </button>
-                </div>
-            ` : '';
+                // Set appropriate card class
+                if (isPunish) {
+                    row.className = 'chat-row system-punish';
+                } else if (msg.isSystem) {
+                    row.className = 'chat-row system-tip';
+                } else {
+                    row.className = 'chat-row';
+                }
 
-            // 🏅 DYNAMIC BADGE BUILDER
+                const safeText = msg.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                const localTime = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                // 🎯 @USERNAME MENTION PARSER
+                let isMentioned = false;
+                const formattedText = safeText.replace(/@([A-Za-z0-9_]+)/g, (match, username) => {
+                    if (myPlayer && username.toUpperCase() === myPlayer.username.toUpperCase()) {
+                        isMentioned = true;
+                        return `<span style="color: #000; background: var(--cyan); padding: 1px 4px; border-radius: 4px;">${match}</span>`;
+                    }
+                    return `<span style="color: var(--yellow);">${match}</span>`;
+                });
+
+                if (isMentioned) {
+                    row.style.border = '1px solid rgba(0, 243, 255, 0.4)';
+                    row.style.background = 'rgba(0, 243, 255, 0.08)';
+                    if (!isHistory) playSfx('mention'); 
+                }
+
+                const isMe = myPlayer && (msg.username.toUpperCase() === myPlayer.username.toUpperCase());
+
+                // Action Buttons
+                const actionsHtml = (!msg.isSystem && !isMe) ? `
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <button class="chat-tip-btn" onclick="openTipModal('${msg.username}', event)" title="Tip">
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path></svg>
+                            TIP
+                        </button>
+                        <button class="chat-action-btn" onclick="replyToUser('${msg.username}', event)" title="Reply">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                        </button>
+                    </div>
+                ` : '';
+
+            // Dynamic Badge & Colors (Zero Emojis - Pure SVGs)
             const vip = getVipInfo(msg.wagered || 0);
-            const userColor = msg.isSystem ? 'var(--yellow)' : vip.color;
-
+            let userColor = vip.color;
             let badgesHtml = '<div class="chat-badges-wrap">';
 
-            if (msg.isSystem) {
+            if (isPunish) {
+                userColor = 'var(--red)';
+                // Pure SVG Slashed-Circle Penalty Icon
+                badgesHtml += `
+                    <div class="chat-badge" style="background: rgba(255, 51, 51, 0.15); border: 1px solid var(--red); color: var(--red);" title="Penalty / Moderation">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                        </svg>
+                    </div>`;
+            } else if (msg.isSystem) {
+                userColor = 'var(--yellow)';
+                // Pure SVG Speaker Announcement Icon
                 badgesHtml += `
                     <div class="chat-badge" style="background: rgba(255, 213, 0, 0.15); border: 1px solid rgba(255, 213, 0, 0.4); color: var(--yellow);" title="System Announcement">
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                        </svg>
                     </div>`;
             } else {
                 const safeName = msg.username.toUpperCase();
-                if (safeName === 'BYTEBULLY' || safeName === 'RETROCRUSH') {
+                if (safeName === 'BYTEBULLY' || safeName === 'RETROCRUSH' || safeName === 'BARO') {
                     badgesHtml += `
                         <div class="chat-badge" style="background: rgba(255, 51, 51, 0.15); border: 1px solid rgba(255, 51, 51, 0.5); color: var(--red); box-shadow: 0 0 8px rgba(255, 51, 51, 0.3);" title="Official Staff">
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
@@ -3569,7 +3707,6 @@
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="${vip.color}80" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 22 12 12 22 2 12"></polygon></svg>
                     </div>`;
 
-                // 👑 NEW High Roller Crown Badge
                 if (msg.wagered >= 10000) {
                     badgesHtml += `
                         <div class="chat-badge" style="background: rgba(0, 243, 255, 0.15); border: 1px solid rgba(0, 243, 255, 0.5); color: var(--cyan); box-shadow: 0 0 8px rgba(0, 243, 255, 0.3);" title="High Roller">
@@ -3588,29 +3725,44 @@
             }
             badgesHtml += '</div>';
 
-            const systemTipPrefixSvg = msg.isSystem ? `
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px;">
-                    <circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path>
-                </svg>` : '';
+            // Prefix Icon for the message body (Pure SVGs)
+            let prefixIconSvg = '';
+            let textStyle = '';
 
-            // Inject the dynamic HTML into the row
-            row.innerHTML = `
-                <div class="chat-header-row">
-                    <div class="chat-user-info" style="flex:1; display:flex; align-items:center; min-width:0;">
-                        ${badgesHtml}
-                        <span class="chat-name" style="color: ${userColor}; text-shadow: 0 0 5px ${userColor}40; overflow:hidden; text-overflow:ellipsis;">${msg.username}</span>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
-                        ${actionsHtml}
-                        <span class="chat-time">${localTime}</span>
-                    </div>
-                </div>
-                <div class="chat-text" style="${msg.isSystem ? 'color: var(--yellow); font-weight: normal;' : ''}">${systemTipPrefixSvg}${formattedText}</div>
-            `;
-            container.appendChild(row);
+            if (isPunish) {
+                textStyle = 'color: #ff7373; font-weight: normal;';
+                prefixIconSvg = `
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+                    </svg>`;
+            } else if (isTipSystem) {
+                textStyle = 'color: var(--yellow); font-weight: normal;';
+                prefixIconSvg = `
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px;">
+                        <circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path>
+                    </svg>`;
+            } else if (msg.isSystem) {
+                textStyle = 'color: var(--yellow); font-weight: normal;';
+            }
 
-            container.scrollTop = container.scrollHeight;
-        }
+                row.innerHTML = `
+                    <div class="chat-header-row">
+                        <div class="chat-user-info" style="flex:1; display:flex; align-items:center; min-width:0;">
+                            ${badgesHtml}
+                            <span class="chat-name" style="color: ${userColor}; text-shadow: 0 0 5px ${userColor}40; overflow:hidden; text-overflow:ellipsis;">${msg.username}</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                            ${actionsHtml}
+                            <span class="chat-time">${localTime}</span>
+                        </div>
+                    </div>
+                    <div class="chat-text" style="${textStyle}">${prefixIconSvg}${formattedText}</div>
+                `;
+                container.appendChild(row);
+
+                container.scrollTop = container.scrollHeight;
+            }
 
 
         // --- SHARE BET TRIGGER FUNCTION ---
@@ -3706,6 +3858,21 @@
                 playSfx('click');
             }
         };
+
+        socket.on('chat_cleared', () => {
+            const container = document.getElementById('chat-messages');
+            if (container) {
+                container.innerHTML = `
+                    <div class="chat-empty" id="chat-empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                        <div>GLOBAL CHAT<br><br><span style="font-size: 8px; color: #555;">Chat was cleared by Staff.</span></div>
+                    </div>`;
+            }
+            playSfx('click');
+            showToast('CHAT CLEARED BY STAFF');
+        });
 
         socket.on('chat_message', (msg) => {
             // FALSE means "this is live, play the mention sound!"

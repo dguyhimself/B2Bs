@@ -1681,9 +1681,9 @@ io.on('connection', async (socket) => {
                     return socket.emit('error_msg', 'YOUR ACCOUNT HAS BEEN BANNED.');
                 }
 
-                // 1.5 DEPOSIT REQUIREMENT FOR CHAT
-                if (p.totalDeposited <= 0 && !isUserAdmin(p.username)) {
-                    return socket.emit('error_msg', 'YOU MUST DEPOSIT MONEY TO USE THE GLOBAL CHAT.');
+// 1.5 DEPOSIT REQUIREMENT FOR CHAT
+                if (p.totalDeposited < 1.00 && !isUserAdmin(p.username)) {
+                    return socket.emit('error_msg', 'Have at least $1.00 to chat.');
                 }
 
                 // 2. ADMIN SLASH COMMAND INTERPRETER

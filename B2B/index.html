@@ -628,6 +628,31 @@
         }
         #chat-send-btn:active { transform: scale(0.95); box-shadow: none; }
 
+        /* --- DYNAMIC CHAT BADGES --- */
+        .chat-badges-wrap {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-right: 6px;
+            flex-shrink: 0;
+        }
+
+        .chat-badge {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+            cursor: help; /* Shows a question mark cursor on hover */
+        }
+
+        .chat-badge:hover {
+            transform: scale(1.1);
+        }
+
         /* --- CHAT TIPPING STYLES --- */
         .chat-tip-btn {
             background: rgba(255, 213, 0, 0.12);
@@ -3485,7 +3510,7 @@
             const safeText = msg.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const localTime = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            // 🎯 @USERNAME MENTION PARSER (Removed Bold for Readability)
+            // 🎯 @USERNAME MENTION PARSER
             let isMentioned = false;
             const formattedText = safeText.replace(/@([A-Za-z0-9_]+)/g, (match, username) => {
                 // If it mentions YOU
@@ -3506,46 +3531,78 @@
 
             const isMe = myPlayer && (msg.username.toUpperCase() === myPlayer.username.toUpperCase());
 
-            // 💸 Tip Button (Left side, next to Username)
-            const tipHtml = (!msg.isSystem && !isMe) ? `
-                <button class="chat-tip-btn" onclick="openTipModal('${msg.username}', event)" title="Tip">
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path></svg>
-                    TIP
-                </button>
+            // 💸 Action Buttons (Tip & Reply grouped on the right)
+            const actionsHtml = (!msg.isSystem && !isMe) ? `
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <button class="chat-tip-btn" onclick="openTipModal('${msg.username}', event)" title="Tip">
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path></svg>
+                        TIP
+                    </button>
+                    <button class="chat-action-btn" onclick="replyToUser('${msg.username}', event)" title="Reply">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                    </button>
+                </div>
             ` : '';
 
-            // ↩️ Reply Button (Right side, next to Time)
-            const replyHtml = (!msg.isSystem && !isMe) ? `
-                <button class="chat-action-btn" onclick="replyToUser('${msg.username}', event)" title="Reply">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
-                </button>
-            ` : '';
+            // 🏅 DYNAMIC BADGE BUILDER
+            const vip = getVipInfo(msg.wagered || 0);
+            const userColor = msg.isSystem ? 'var(--yellow)' : vip.color;
 
-            const systemBadgeSvg = `
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: middle;">
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                </svg>`;
+            let badgesHtml = '<div class="chat-badges-wrap">';
+
+            if (msg.isSystem) {
+                badgesHtml += `
+                    <div class="chat-badge" style="background: rgba(255, 213, 0, 0.15); border: 1px solid rgba(255, 213, 0, 0.4); color: var(--yellow);" title="System Announcement">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                    </div>`;
+            } else {
+                const safeName = msg.username.toUpperCase();
+                if (safeName === 'BYTEBULLY' || safeName === 'RETROCRUSH') {
+                    badgesHtml += `
+                        <div class="chat-badge" style="background: rgba(255, 51, 51, 0.15); border: 1px solid rgba(255, 51, 51, 0.5); color: var(--red); box-shadow: 0 0 8px rgba(255, 51, 51, 0.3);" title="Official Staff">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        </div>`;
+                }
+
+                badgesHtml += `
+                    <div class="chat-badge" style="background: ${vip.color}15; border: 1px solid ${vip.color}50; color: ${vip.color}; box-shadow: 0 0 8px ${vip.color}20;" title="${vip.name} Rank">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="${vip.color}80" stroke="currentColor" stroke-width="1.5"><polygon points="12 2 22 12 12 22 2 12"></polygon></svg>
+                    </div>`;
+
+                // 👑 NEW High Roller Crown Badge
+                if (msg.wagered >= 10000) {
+                    badgesHtml += `
+                        <div class="chat-badge" style="background: rgba(0, 243, 255, 0.15); border: 1px solid rgba(0, 243, 255, 0.5); color: var(--cyan); box-shadow: 0 0 8px rgba(0, 243, 255, 0.3);" title="High Roller">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="2 20 22 20 19 6 15 12 12 2 9 12 5 6 2 20"></polygon></svg>
+                        </div>`;
+                }
+
+                let charSum = 0;
+                for (let i = 0; i < msg.username.length; i++) charSum += msg.username.charCodeAt(i);
+                if ((charSum + Math.floor(msg.wagered || 0)) % 10 === 7) {
+                    badgesHtml += `
+                        <div class="chat-badge" style="background: rgba(255, 153, 0, 0.15); border: 1px solid rgba(255, 153, 0, 0.5); color: #ff9900; box-shadow: 0 0 8px rgba(255, 153, 0, 0.3);" title="On a Hot Streak!">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"></path></svg>
+                        </div>`;
+                }
+            }
+            badgesHtml += '</div>';
+
             const systemTipPrefixSvg = msg.isSystem ? `
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px;">
                     <circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path>
                 </svg>` : '';
 
-            const vip = getVipInfo(msg.wagered);
-            const userColor = msg.isSystem ? 'var(--yellow)' : vip.color;
-            const badgeIcon = msg.isSystem ? systemBadgeSvg : vip.badge;
-
-            // Updated HTML structure for far-right reply button placement
+            // Inject the dynamic HTML into the row
             row.innerHTML = `
                 <div class="chat-header-row">
                     <div class="chat-user-info" style="flex:1; display:flex; align-items:center; min-width:0;">
-                        ${badgeIcon}
+                        ${badgesHtml}
                         <span class="chat-name" style="color: ${userColor}; text-shadow: 0 0 5px ${userColor}40; overflow:hidden; text-overflow:ellipsis;">${msg.username}</span>
-                        ${tipHtml}
                     </div>
                     <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                        ${actionsHtml}
                         <span class="chat-time">${localTime}</span>
-                        ${replyHtml}
                     </div>
                 </div>
                 <div class="chat-text" style="${msg.isSystem ? 'color: var(--yellow); font-weight: normal;' : ''}">${systemTipPrefixSvg}${formattedText}</div>

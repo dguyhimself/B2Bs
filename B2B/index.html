@@ -642,16 +642,26 @@
             align-items: center;
             gap: 4px;
             transition: all 0.15s ease;
-            margin-left: 6px;
             flex-shrink: 0;
         }
-        .chat-tip-btn:hover {
-            background: var(--yellow);
-            color: #000;
-            box-shadow: 0 0 8px rgba(255, 213, 0, 0.5);
-            transform: scale(1.05);
-        }
+        .chat-tip-btn:hover { background: var(--yellow); color: #000; box-shadow: 0 0 8px rgba(255, 213, 0, 0.5); transform: scale(1.05); }
         .chat-tip-btn:active { transform: scale(0.95); }
+
+        /* Reply Button */
+        .chat-action-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-dim);
+            padding: 3px 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+        .chat-action-btn:hover { background: rgba(0, 243, 255, 0.15); color: var(--cyan); border-color: rgba(0, 243, 255, 0.4); }
+        .chat-action-btn:active { transform: scale(0.95); }
 
         /* Highlight for System Chat Announcements */
         .chat-row.system-tip {
@@ -730,11 +740,11 @@
         .tt-tab.active { color: var(--cyan); border-bottom: 2px solid var(--cyan); }
         .tt-empty { text-align: center; padding: 20px; font-family: 'VT323', monospace; font-size: 16px; color: var(--text-dim); }
 
-        /* Column Width Formatting */
-        .col-user { flex: 2; display: flex; align-items: center; gap: 6px; overflow: hidden; } 
+        /* Column Width Formatting (Optimized for large numbers) */
+        .col-user { flex: 1.5; display: flex; align-items: center; gap: 6px; overflow: hidden; } 
         .col-bet { flex: 1; text-align: right; } 
         .col-mult { flex: 1; text-align: center; } 
-        .col-profit { flex: 1.5; text-align: right; }
+        .col-profit { flex: 1.8; text-align: right; white-space: nowrap; }
 
         #live-table-body { display: flex; flex-direction: column; gap: 6px; }
 
@@ -921,6 +931,103 @@
             margin-top: 10px;
             white-space: nowrap;
         }
+        /* --- FLEX BET CARD STYLES --- */
+        .chat-row.bet-flex-row {
+            background: linear-gradient(135deg, rgba(20, 23, 38, 0.95) 0%, rgba(10, 11, 18, 0.95) 100%);
+            border: 1px solid rgba(255, 213, 0, 0.35);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(255, 213, 0, 0.04);
+            padding: 10px 12px;
+            gap: 8px;
+        }
+
+        .flex-badge {
+            background: rgba(255, 213, 0, 0.15);
+            border: 1px solid var(--yellow);
+            color: var(--yellow);
+            font-family: 'Press Start 2P', monospace;
+            font-size: 7px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            letter-spacing: 0.5px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .flex-ticket {
+            background: rgba(0, 0, 0, 0.45);
+            border: 1px dashed rgba(255, 255, 255, 0.15);
+            border-radius: 6px;
+            padding: 8px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .ft-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            padding-bottom: 6px;
+        }
+
+        .ft-label {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            color: var(--text-dim);
+        }
+
+        .ft-mult {
+            font-family: 'VT323', monospace;
+            font-size: 28px;
+            line-height: 1;
+        }
+
+        .ft-details {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'VT323', monospace;
+            font-size: 18px;
+        }
+
+        .ft-col { display: flex; flex-direction: column; }
+        .ft-sub { font-size: 12px; color: var(--text-dim); }
+        .ft-val { color: #ffffff; }
+        .ft-profit { color: var(--green); text-shadow: 0 0 8px rgba(57, 255, 20, 0.4); }
+
+        /* Buttons on Toast & My Bets */
+        .toast-flex-btn {
+            background: var(--yellow);
+            border: none;
+            color: #000;
+            font-family: 'Press Start 2P', monospace;
+            font-size: 8px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 8px;
+            font-weight: bold;
+        }
+        .toast-flex-btn:active { transform: scale(0.95); }
+
+        .hist-flex-btn {
+            background: rgba(255, 213, 0, 0.1);
+            border: 1px solid rgba(255, 213, 0, 0.4);
+            color: var(--yellow);
+            padding: 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 6px;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0; /* Prevents the button from being squished */
+        }
+        .hist-flex-btn:hover { background: var(--yellow); color: #000; }
+        .hist-flex-btn:active { transform: scale(0.92); }
     </style>
 </head>
 <body>
@@ -1019,7 +1126,7 @@
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
                         </button>
                     </div>
-    
+
                     <!-- Sleek Live Canvas HUD (Online Only, Pushed to Right) -->
                     <div id="game-hud" style="justify-content: flex-end;">
                         <div class="hud-badge" style="color: var(--cyan);">
@@ -1045,27 +1152,27 @@
 
 
                     <canvas id="game-canvas"></canvas>
-    
+
                     <!-- Countdown Progress Bar -->
                     <div id="countdown-wrap">
                         <div id="countdown-bg">
                             <div id="countdown-fill"></div>
                         </div>
                     </div>
-    
+
                     <div id="status-display">PREPARING LAUNCH...</div>
                     <div id="multiplier-display">1.00x</div>
                 </div> <!-- END GAME CONTAINER -->
-    
+
                 <!-- Controls Area -->
                 <div id="controls">
-    
+
                     <!-- MANUAL / AUTO Switch -->
                     <div class="mode-tabs">
                         <div class="mode-tab active" id="tab-manual" onclick="setBetMode('manual')">MANUAL</div>
                         <div class="mode-tab" id="tab-auto" onclick="setBetMode('auto')">AUTO</div>
                     </div>
-    
+
                     <div class="input-row">
                         <!-- Bet Amount Group -->
                         <div class="input-group">
@@ -1080,7 +1187,7 @@
                                 <div class="quick-btn" onclick="modifyBet('max')">MAX</div>
                             </div>
                         </div>
-    
+
                         <!-- Auto Cashout Group -->
                         <div class="input-group">
                             <label>AUTO CASHOUT</label>
@@ -1095,13 +1202,13 @@
                             </div>
                         </div>
                     </div>
-    
+
                     <!-- Main Action Button -->
                     <button id="action-btn" class="btn-bet" onclick="handleAction()">
                         <span id="btn-main-text" style="pointer-events: none;">PLACE BET</span>
                         <span id="btn-subtext" class="btn-subtext" style="pointer-events: none;">Next Round</span>
                     </button>
-    
+
                 </div> <!-- END CONTROLS -->
 
             </div>
@@ -1129,7 +1236,7 @@
                         <div class="rs-val" id="pot-top" style="color: var(--yellow); text-shadow: 0 0 8px rgba(255, 213, 0, 0.4);">+$0.00</div>
                     </div>
                 </div>
-                
+
 
                 <!-- NEW: BC.GAME Style Switcher -->
                 <div class="table-tabs">
@@ -1161,7 +1268,7 @@
 
 <!-- UPGRADED VIP PASSPORT CARD -->
             <div style="background: linear-gradient(135deg, rgba(17, 19, 32, 0.95) 0%, rgba(10, 11, 18, 0.9) 100%); border: 1px solid #23253b; border-radius: 10px; padding: 16px; box-shadow: 0 8px 25px rgba(0,0,0,0.4); display: flex; flex-direction: column; gap: 14px;">
-                
+
                 <!-- Top Row: Avatar, Identity & Floating Rank Pill -->
                 <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px;">
                     <div style="display: flex; align-items: center; gap: 12px; min-width: 0; flex: 1;">
@@ -1210,7 +1317,7 @@
 
             <!-- UPGRADED 2X2 STATS DASHBOARD GRID -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                
+
                 <!-- Card 1: Wagered -->
                 <div style="background: rgba(14, 15, 24, 0.75); border: none; border-radius: 8px; padding: 12px; display: flex; flex-direction: column; gap: 4px; position: relative;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -1467,7 +1574,7 @@
 
 <!-- UPGRADED PROVABLY FAIR TERMINAL -->
             <div style="border: 1px solid rgba(255, 213, 0, 0.25); background: linear-gradient(180deg, rgba(17,18,29,0.95) 0%, rgba(255, 213, 0, 0.03) 100%); border-radius: 8px; padding: 16px; margin-top: 10px; margin-bottom: 15px; box-shadow: 0 6px 25px rgba(0,0,0,0.4);">
-                
+
                 <!-- Card Header -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; border-bottom: 1px dashed rgba(255, 255, 255, 0.08); padding-bottom: 10px;">
                     <div style="display: flex; align-items: center; gap: 8px;">
@@ -1882,7 +1989,7 @@
             setBtn('WAIT'); // Visually lock it instantly
             socket.emit('place_bet', { amount: a, autoCashout: o });
         }
-        
+
         let state = 'WAITING';
         let startTime = 0;
         let currentMult = 1.00;
@@ -2009,9 +2116,11 @@
         function playSfx(type) {
             if(!audioEnabled) return;
             if(type === 'click') playTone(600, 'square', 0.1, 0.05);
-            if(type === 'launch') { playTone(200, 'sawtooth', 0.5, 0.1); setTimeout(()=>playTone(300, 'sawtooth', 0.5, 0.1), 100); }
-            if(type === 'cashout') { playTone(523.25, 'square', 0.1); setTimeout(()=>playTone(659.25, 'square', 0.2), 100); setTimeout(()=>playTone(783.99, 'square', 0.3), 200); }
-            if(type === 'crash') { playNoise(1.5, 0.5); }
+            if(type === 'error') { playTone(150, 'sawtooth', 0.2, 0.1); setTimeout(()=>playTone(100, 'sawtooth', 0.3, 0.1), 150); }
+            if(type === 'success') { playTone(523.25, 'square', 0.1); setTimeout(()=>playTone(659.25, 'square', 0.2), 100); setTimeout(()=>playTone(783.99, 'square', 0.3), 200); }
+            if(type === 'launch') { playTone(200, 'sawtooth', 0.4, 0.1); setTimeout(()=>playTone(300, 'sawtooth', 0.4, 0.1), 100); }
+            // New Mention Ping!
+            if(type === 'mention') { playTone(800, 'sine', 0.1, 0.05); setTimeout(()=>playTone(1200, 'sine', 0.15, 0.05), 100); }
         }
 
         // --- VIP Ranking System (USDT Scale) ---
@@ -2046,7 +2155,7 @@
         function resizeCanvas() {
             const dpr = window.devicePixelRatio || 1;
             const parent = ui.canvas.parentElement;
-            
+
             cw = parent.clientWidth;
             ch = parent.clientHeight;
 
@@ -2316,7 +2425,7 @@
 
                     // C. Crisp Floating Pill Badge
                     let badgeText = visualCashoutMult.toFixed(2) + 'x';
-                    
+
                     // High-legibility crisp sans-serif font (BC.GAME standard)
                     ctx.font = '900 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace';
                     let textWidth = ctx.measureText(badgeText).width;
@@ -2859,13 +2968,25 @@
                             let profitStr = isWin ? `+$${(b.payout - b.bet).toFixed(2)}` : `-$${b.bet.toFixed(2)}`;
                             let localTime = new Date(b.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-                            // Removed the 'fadeIn' animation entirely so the list looks perfectly static and professional
+                            // Show compact SVG Share button only on winning bets
+                            const flexBtn = isWin ? `
+                                <button class="hist-flex-btn" onclick="triggerShareBet(${b.bet}, ${b.mult})" title="Share to Chat">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                                        <polyline points="16 6 12 2 8 6"></polyline>
+                                        <line x1="12" y1="2" x2="12" y2="15"></line>
+                                    </svg>
+                                </button>
+                            ` : '';
+
                             let html = `
                                 <div class="live-row ${isWin ? 'cashed' : 'crashed'}" style="padding: 8px 15px;">
                                     <div class="col-user" style="color:var(--text-dim); font-size:16px;">${localTime}</div>
                                     <div class="col-bet">$${b.bet.toFixed(2)}</div>
                                     <div class="col-mult">${multText}</div>
-                                    <div class="col-profit" style="color: ${isWin ? 'var(--green)' : 'var(--text-dim)'}">${profitStr}</div>
+                                    <div class="col-profit" style="color: ${isWin ? 'var(--green)' : 'var(--text-dim)'}; display:flex; align-items:center; justify-content:flex-end; white-space:nowrap;">
+                                        ${profitStr} ${flexBtn}
+                                    </div>
                                 </div>
                             `;
                             ui.liveBody.insertAdjacentHTML('beforeend', html);
@@ -2963,7 +3084,7 @@
         window.handleAction = () => {
             if (requireAuth()) return; // Instantly redirect guests
             playSfx('click');
-    
+
             // 1. CASHOUT ALWAYS TAKES ABSOLUTE PRIORITY
             if(ui.btn.classList.contains('btn-cashout')) {
                 if (myBet && !myBet.cashedOut && !myBet.isCashingOut) {
@@ -2971,7 +3092,7 @@
                     ui.btn.classList.remove('btn-cashout');
                     ui.btn.classList.add('btn-disabled');
                     socket.emit('cash_out');
-    
+
                     // 👇 ADD THIS FAILSAFE BLOCK 👇
                     setTimeout(() => {
                         // If 1 second passes and we are STILL stuck cashing out...
@@ -3023,7 +3144,7 @@
         window.requestWithdraw = () => {
             const addr = document.getElementById('withdraw-address').value.trim();
             const amt = parseFloat(document.getElementById('withdraw-amount').value);
-    
+
             // INSTANT FRONTEND VERIFICATION CHECK
             /* TEMPORARILY DISABLED
             if (!myPlayer.isVerified) {
@@ -3265,62 +3386,172 @@
             }
         };
 
-        function renderChatMessage(msg) {
-            const container = document.getElementById('chat-messages');
+        // --- CLICK TO REPLY FUNCTION ---
+        window.replyToUser = (username, event) => {
+            if (event) event.stopPropagation();
+            if (requireAuth()) return;
 
+            const input = document.getElementById('chat-input');
+            const currentText = input.value;
+            const mentionText = `@${username} `;
+
+            // Smart append: If you already typed something, put a space first.
+            if (currentText.length > 0 && !currentText.endsWith(' ')) {
+                input.value = currentText + ' ' + mentionText;
+            } else {
+                input.value = currentText + mentionText;
+            }
+
+            input.focus();
+            playSfx('click');
+        };
+
+        // --- UPGRADED CHAT RENDERER ---
+        // (Added isHistory flag so we don't play 50 notification sounds when the page loads!)
+        // --- UPGRADED CHAT RENDERER ---
+        function renderChatMessage(msg, isHistory = false) {
+            const container = document.getElementById('chat-messages');
             const emptyState = document.getElementById('chat-empty-state');
             if (emptyState) emptyState.remove();
 
             const row = document.createElement('div');
-            row.className = msg.isSystem ? 'chat-row system-tip' : 'chat-row';
 
+            // --- 1. RENDER VERIFIED FLEX BET SLIP ---
+            if (msg.isFlex) {
+                row.className = 'chat-row bet-flex-row';
+                const localTime = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const vip = getVipInfo(msg.wagered);
+
+                let multColor = 'var(--text-main)';
+                if (msg.mult >= 50) multColor = 'var(--magenta)';
+                else if (msg.mult >= 10) multColor = 'var(--yellow)';
+                else if (msg.mult >= 2) multColor = 'var(--green)';
+
+                row.innerHTML = `
+                    <div class="chat-header-row">
+                        <div class="chat-user-info">
+                            ${vip.badge}
+                            <span class="chat-name" style="color: ${vip.color}; text-shadow: 0 0 5px ${vip.color}40;">${msg.username}</span>
+                            <span class="flex-badge">
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path></svg>
+                                SHARED BET
+                            </span>
+                        </div>
+                        <span class="chat-time">${localTime}</span>
+                    </div>
+                    <div class="flex-ticket">
+                        <div class="ft-top">
+                            <span class="ft-label">CASHOUT MULTIPLIER</span>
+                            <span class="ft-mult" style="color: ${multColor}; text-shadow: 0 0 10px ${multColor}60;">${msg.mult.toFixed(2)}x</span>
+                        </div>
+                        <div class="ft-details">
+                            <div class="ft-col">
+                                <span class="ft-sub">STAKE</span>
+                                <span class="ft-val">$${msg.bet.toFixed(2)}</span>
+                            </div>
+                            <div class="ft-col" style="text-align: right;">
+                                <span class="ft-sub">PAYOUT (PROFIT)</span>
+                                <span class="ft-val ft-profit">+$${msg.profit.toFixed(2)}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(row);
+                container.scrollTop = container.scrollHeight;
+                return;
+            }
+
+            // --- 2. STANDARD MESSAGES WITH MENTIONS ---
+            row.className = msg.isSystem ? 'chat-row system-tip' : 'chat-row';
             const safeText = msg.text.replace(/</g, "&lt;").replace(/>/g, "&gt;");
             const localTime = new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-            // Do not display tip button on system messages or on your own messages
+            // 🎯 @USERNAME MENTION PARSER (Removed Bold for Readability)
+            let isMentioned = false;
+            const formattedText = safeText.replace(/@([A-Za-z0-9_]+)/g, (match, username) => {
+                // If it mentions YOU
+                if (myPlayer && username.toUpperCase() === myPlayer.username.toUpperCase()) {
+                    isMentioned = true;
+                    return `<span style="color: #000; background: var(--cyan); padding: 1px 4px; border-radius: 4px;">${match}</span>`;
+                }
+                // If it mentions SOMEONE ELSE
+                return `<span style="color: var(--yellow);">${match}</span>`;
+            });
+
+            // If you were mentioned, highlight the message box and play sound!
+            if (isMentioned) {
+                row.style.border = '1px solid rgba(0, 243, 255, 0.4)';
+                row.style.background = 'rgba(0, 243, 255, 0.08)';
+                if (!isHistory) playSfx('mention'); 
+            }
+
             const isMe = myPlayer && (msg.username.toUpperCase() === myPlayer.username.toUpperCase());
-            const tipButtonHtml = (!msg.isSystem && !isMe) ? `
-                <button class="chat-tip-btn" onclick="openTipModal('${msg.username}', event)" title="Tip ${msg.username}">
+
+            // 💸 Tip Button (Left side, next to Username)
+            const tipHtml = (!msg.isSystem && !isMe) ? `
+                <button class="chat-tip-btn" onclick="openTipModal('${msg.username}', event)" title="Tip">
                     <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path></svg>
                     TIP
                 </button>
             ` : '';
 
-            // Clean SVG icon for SYSTEM instead of the megaphone emoji
+            // ↩️ Reply Button (Right side, next to Time)
+            const replyHtml = (!msg.isSystem && !isMe) ? `
+                <button class="chat-action-btn" onclick="replyToUser('${msg.username}', event)" title="Reply">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                </button>
+            ` : '';
+
             const systemBadgeSvg = `
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: middle;">
                     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
                     <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-                </svg>
-            `;
-
-            // Clean SVG coin/transfer icon prepended to the system message text
+                </svg>`;
             const systemTipPrefixSvg = msg.isSystem ? `
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px; margin-right: 5px;">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path>
-                </svg>
-            ` : '';
+                    <circle cx="12" cy="12" r="10"></circle><path d="M12 6v12M15 9.5H10.5a2 2 0 0 0 0 4h3a2 2 0 0 1 0 4H9"></path>
+                </svg>` : '';
 
             const vip = getVipInfo(msg.wagered);
             const userColor = msg.isSystem ? 'var(--yellow)' : vip.color;
             const badgeIcon = msg.isSystem ? systemBadgeSvg : vip.badge;
 
+            // Updated HTML structure for far-right reply button placement
             row.innerHTML = `
                 <div class="chat-header-row">
-                    <div class="chat-user-info">
+                    <div class="chat-user-info" style="flex:1; display:flex; align-items:center; min-width:0;">
                         ${badgeIcon}
-                        <span class="chat-name" style="color: ${userColor}; text-shadow: 0 0 5px ${userColor}40;">${msg.username}</span>
-                        ${tipButtonHtml}
+                        <span class="chat-name" style="color: ${userColor}; text-shadow: 0 0 5px ${userColor}40; overflow:hidden; text-overflow:ellipsis;">${msg.username}</span>
+                        ${tipHtml}
                     </div>
-                    <span class="chat-time">${localTime}</span>
+                    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                        <span class="chat-time">${localTime}</span>
+                        ${replyHtml}
+                    </div>
                 </div>
-                <div class="chat-text" style="${msg.isSystem ? 'color: var(--yellow); font-weight: normal;' : ''}">${systemTipPrefixSvg}${safeText}</div>
+                <div class="chat-text" style="${msg.isSystem ? 'color: var(--yellow); font-weight: normal;' : ''}">${systemTipPrefixSvg}${formattedText}</div>
             `;
             container.appendChild(row);
 
             container.scrollTop = container.scrollHeight;
         }
+
+
+        // --- SHARE BET TRIGGER FUNCTION ---
+        window.triggerShareBet = (betAmount, mult) => {
+            playSfx('click');
+            if (requireAuth()) return;
+
+            socket.emit('share_bet', {
+                bet: parseFloat(betAmount),
+                mult: parseFloat(mult)
+            });
+        };
+
+        socket.on('share_success', () => {
+            playSfx('cashout');
+            showToast('WIN SHARED TO CHAT!');
+        });
 
         // --- CHAT TIPPING CONTROLLER ---
         let currentTipTarget = '';
@@ -3401,7 +3632,8 @@
         };
 
         socket.on('chat_message', (msg) => {
-            renderChatMessage(msg);
+            // FALSE means "this is live, play the mention sound!"
+            renderChatMessage(msg, false);
         });
 
         socket.on('leaderboard_data', (data) => {
@@ -3468,7 +3700,7 @@
             });
         });
 
-                                                                                                 
+
 
         function copyAddress(event) {
             if (requireAuth()) return;
@@ -3532,7 +3764,7 @@
                 document.getElementById('chat-input').placeholder = "Login to chat...";
                 document.getElementById('chat-input').readOnly = true; // Prevents phone keyboard from popping up
             }
-    
+
             // --- HIDE THE LOADING SCREEN ---
             const loader = document.getElementById('loading-overlay');
             if (loader) {
@@ -3550,7 +3782,8 @@
             const chatBox = document.getElementById('chat-messages');
             if(d.chatHistory && d.chatHistory.length > 0) {
                 chatBox.innerHTML = ''; // Only clear if there are actually messages
-                d.chatHistory.forEach(renderChatMessage);
+                // TRUE means "this is history, DO NOT play the mention sound"
+                d.chatHistory.forEach(m => renderChatMessage(m, true));
             }
 
             // Show Deposit Address cleanly inside the pill
@@ -3677,7 +3910,7 @@
             playSfx('crash');
 
             //createExplosion(cw/2, rocketY);
-            
+
             // Instantly push this round's bet to the local history Array!
             if (myBet) {
                 myBetsHistory.unshift({
@@ -3713,11 +3946,12 @@
         });
 
         socket.on('cashout_success', (d) => {
+            
             if(myBet) {
                 myBet.cashedOut = true;
                 myBet.cashoutMult = parseFloat(d.multiplier);
             }
-    
+
             // 👇 ADD THIS LINE SO THE MARKER DRAWS IMMEDIATELY
             visualCashoutMult = parseFloat(d.multiplier);
             updateStats(d.stats);

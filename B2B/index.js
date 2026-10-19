@@ -91,6 +91,30 @@ async function sendVerificationEmail(email, token) {
     }
 }
 
+// --- ADMIN & MODERATION SYSTEM ---
+const ADMIN_USERNAMES = ['BARO', 'BYTEBULLY']; // Add any other admin usernames in uppercase
+const bannedUsers = new Set();                     // Tracks banned usernames
+const mutedUsers = new Map();                      // username -> mute expiration timestamp (ms)
+
+function isUserAdmin(username) {
+    return username && ADMIN_USERNAMES.includes(username.toUpperCase());
+}
+
+function sendSystemNotice(text, type = 'info') {
+    const msg = {
+        id: Date.now() + Math.random(),
+        username: type === 'punish' ? 'MODERATION' : 'SYSTEM',
+        text: text,
+        timestamp: Date.now(),
+        wagered: 0,
+        isSystem: true,
+        systemType: type // 'punish', 'tip', or 'info'
+    };
+    chatHistory.push(msg);
+    if (chatHistory.length > 50) chatHistory.shift();
+    io.emit('chat_message', msg);
+}
+
 // --- TELEGRAM NOTIFIER ---
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -1456,8 +1480,14 @@ io.on('connection', async (socket) => {
         // 4. Handle Bets
         // 4. Handle Bets (SECURED WITH MUTEX LOCK)
         socket.on('place_bet', async (data) => {
-            const p = players[userId];
-            if (!p) return;
+
+            const p = players[userId]; // ✅ Declare 'p' first
+            if (!p) return;            // ✅ Ensure the player actually exists in RAM
+
+            // BLOCK BANNED USERS
+            if (bannedUsers.has(p.username.toUpperCase())) { // ✅ Now it safely knows what 'p' is
+                return socket.emit('error_msg', 'ACCOUNT BANNED.');
+            }
 
             // SECURITY: Block concurrent spam requests
             if (p.isWithdrawing || p.actionLock) {
@@ -1635,48 +1665,169 @@ io.on('connection', async (socket) => {
         });
 
         // --- Global Live Chat (SECURE) ---
-        socket.on('send_chat', (text) => {
-            const p = players[userId];
-            if (!p) return;
+            // --- GLOBAL LIVE CHAT WITH ADMIN COMMAND SYSTEM ---
+            socket.on('send_chat', (text) => {
+                const p = players[userId];
+                if (!p) return;
 
-            // SECURITY 1: Anti-Spam Rate Limiter (2 seconds per message)
-            const CHAT_COOLDOWN_MS = 2000;
-            const lastChat = chatCooldowns[userId] || 0;
-            if (Date.now() - lastChat < CHAT_COOLDOWN_MS) {
-                return socket.emit('error_msg', 'You are typing too fast!');
-            }
+                if (!text || typeof text !== 'string') return;
+                const trimmedText = text.trim();
+                if (trimmedText.length === 0) return;
 
-            if (!text || typeof text !== 'string') return;
+                const upperName = p.username.toUpperCase();
 
-            // 1. Trim whitespace and enforce length limit
-            let rawText = text.trim().substring(0, 80);
-            if (rawText.length === 0) return;
+                // 1. BAN ENFORCEMENT
+                if (bannedUsers.has(upperName)) {
+                    return socket.emit('error_msg', 'YOUR ACCOUNT HAS BEEN BANNED.');
+                }
 
-            // Update cooldown timer AFTER a valid message passes
-            chatCooldowns[userId] = Date.now();
+                // 1.5 DEPOSIT REQUIREMENT FOR CHAT
+                if (p.totalDeposited <= 0 && !isUserAdmin(p.username)) {
+                    return socket.emit('error_msg', 'YOU MUST DEPOSIT MONEY TO USE THE GLOBAL CHAT.');
+                }
 
-            // 2. STRICT BACKEND SANITIZATION
-            const safeText = rawText
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
+                // 2. ADMIN SLASH COMMAND INTERPRETER
+                if (trimmedText.startsWith('/')) {
+                    const parts = trimmedText.split(/\s+/);
+                    const cmd = parts[0].toLowerCase();
+                    const args = parts.slice(1);
 
-            const msgData = {
-                id: Date.now() + Math.random(),
-                username: p.username,
-                text: safeText, 
-                // FIX: Send raw UNIX time, letting the browser format it locally!
-                timestamp: Date.now(), 
-                wagered: p.lifetimeWagered
-            };
+                    if (!isUserAdmin(p.username)) {
+                        return socket.emit('error_msg', 'UNKNOWN COMMAND OR UNAUTHORIZED.');
+                    }
 
-            chatHistory.push(msgData);
-            if (chatHistory.length > 50) chatHistory.shift(); 
+                    // COMMAND: /MUTE <user> [minutes]
+                    if (cmd === '/mute') {
+                        const target = args[0] ? args[0].replace('@', '').toUpperCase() : null;
+                        const durationMins = parseInt(args[1]) || 5;
 
-            io.emit('chat_message', msgData);
-        });
+                        if (!target) return socket.emit('error_msg', 'Usage: /mute @username [mins]');
+                        if (isUserAdmin(target)) return socket.emit('error_msg', 'CANNOT MUTE STAFF.');
+
+                        mutedUsers.set(target, Date.now() + (durationMins * 60 * 1000));
+                        sendSystemNotice(`User ${target} was muted for ${durationMins}m by Staff.`, 'punish');
+                        sendTelegramAlert(`🔇 <b>USER MUTED</b>\nStaff ${p.username} muted <b>${target}</b> for ${durationMins}m.`);
+                        return;
+                    }
+
+                    // COMMAND: /UNMUTE <user>
+                    if (cmd === '/unmute') {
+                        const target = args[0] ? args[0].replace('@', '').toUpperCase() : null;
+                        if (!target) return socket.emit('error_msg', 'Usage: /unmute @username');
+
+                        mutedUsers.delete(target);
+                        sendSystemNotice(`User ${target} was unmuted by Staff.`);
+                        return;
+                    }
+
+                    // COMMAND: /BAN <user>
+                    if (cmd === '/ban') {
+                        const target = args[0] ? args[0].replace('@', '').toUpperCase() : null;
+                        if (!target) return socket.emit('error_msg', 'Usage: /ban @username');
+                        if (isUserAdmin(target)) return socket.emit('error_msg', 'CANNOT BAN STAFF.');
+
+                        bannedUsers.add(target);
+
+                        // Disconnect & kick any live connections for this banned user
+                        for (const [sId, s] of io.sockets.sockets) {
+                            if (s.userId && players[s.userId]?.username?.toUpperCase() === target) {
+                                s.emit('force_logout');
+                                s.disconnect(true);
+                            }
+                        }
+
+                        sendSystemNotice(`User ${target} was permanently banned by Staff.`, 'punish');
+                        sendTelegramAlert(`⛔ <b>USER BANNED</b>\nStaff ${p.username} permanently banned <b>${target}</b>.`);
+                        return;
+                    }
+
+                    // COMMAND: /UNBAN <user>
+                    if (cmd === '/unban') {
+                        const target = args[0] ? args[0].replace('@', '').toUpperCase() : null;
+                        if (!target) return socket.emit('error_msg', 'Usage: /unban @username');
+
+                        bannedUsers.delete(target);
+                        socket.emit('error_msg', `User ${target} has been unbanned.`);
+                        return;
+                    }
+
+                    // COMMAND: /CLEAR
+                    if (cmd === '/clear') {
+                        chatHistory.length = 0; // Wipe history array
+                        io.emit('chat_cleared');
+                        sendSystemNotice('Chat history was cleared by Staff.');
+                        return;
+                    }
+
+                    // COMMAND: /ALERT <message>
+                    if (cmd === '/alert') {
+                        const alertMsg = args.join(' ');
+                        if (!alertMsg) return socket.emit('error_msg', 'Usage: /alert <message>');
+
+                        const alertPayload = {
+                            id: Date.now() + Math.random(),
+                            username: p.username, // Shows your admin username (e.g. BARO or BYTEBULLY)
+                            text: alertMsg,
+                            timestamp: Date.now(),
+                            wagered: 0,
+                            isAdminAlert: true,
+                            isSystem: true // Guarantees it broadcasts even on older cached clients
+                        };
+
+                        chatHistory.push(alertPayload);
+                        if (chatHistory.length > 50) chatHistory.shift();
+                        io.emit('chat_message', alertPayload);
+                        return;
+                    }
+
+                    // COMMAND: /HELP
+                    if (cmd === '/help') {
+                        return socket.emit('error_msg', 'Cmds: /mute @user [mins], /unmute @user, /ban @user, /unban @user, /clear, /alert <msg>');
+                    }
+
+                    return socket.emit('error_msg', 'Command not recognized. Type /help');
+                }
+
+                // 3. MUTE ENFORCEMENT FOR NORMAL CHAT
+                const muteExpire = mutedUsers.get(upperName);
+                if (muteExpire) {
+                    if (Date.now() < muteExpire) {
+                        const minsLeft = Math.ceil((muteExpire - Date.now()) / 60000);
+                        return socket.emit('error_msg', `YOU ARE MUTED FOR ${minsLeft} MORE MINUTE(S).`);
+                    } else {
+                        mutedUsers.delete(upperName); // Mute expired
+                    }
+                }
+
+                // 4. Rate Limiter (2 seconds per message)
+                const CHAT_COOLDOWN_MS = 2000;
+                const lastChat = chatCooldowns[userId] || 0;
+                if (Date.now() - lastChat < CHAT_COOLDOWN_MS) {
+                    return socket.emit('error_msg', 'You are typing too fast!');
+                }
+                chatCooldowns[userId] = Date.now();
+
+                // 5. Sanitize & Broadcast Normal Message
+                let rawText = trimmedText.substring(0, 80);
+                const safeText = rawText
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#39;');
+
+                const msgData = {
+                    id: Date.now() + Math.random(),
+                    username: p.username,
+                    text: safeText,
+                    timestamp: Date.now(),
+                    wagered: p.lifetimeWagered
+                };
+
+                chatHistory.push(msgData);
+                if (chatHistory.length > 50) chatHistory.shift();
+                io.emit('chat_message', msgData);
+            });
             // --- CHAT TIPPING SYSTEM ---
             socket.on('send_tip', async (data) => {
                 const p = players[userId];

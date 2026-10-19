@@ -2681,19 +2681,6 @@
             if(!p) return;
             myPlayer = p; // Update global cache
             myBalance = p.balance; // Note: myBalance is now USDT/USD
-    
-            // --- CHAT LOCK FOR NON-DEPOSITORS ---
-            const chatInput = document.getElementById('chat-input');
-            if (chatInput) {
-                if (p.totalDeposited > 0) {
-                    chatInput.placeholder = "Type message...";
-                    chatInput.readOnly = false;
-                } else {
-                    chatInput.placeholder = "Deposit money to chat...";
-                    chatInput.readOnly = true;
-                }
-            }
-            // ------------------------------------
 
             // Calculate USD value
             const usdValue = myBalance;

@@ -762,6 +762,16 @@ async function processCashout(userId, forcedMultiplier = null, reason = 'MANUAL'
     bet.cashedOut = true;
     bet.cashoutMult = multiplier;
 
+    // --- TRACK FOR INSTANT CHAT FLEX ---
+    if (players[userId]) {
+        players[userId].lastWin = {
+            bet: bet.amountUsd,
+            mult: multiplier,
+            payout: safeMul(bet.amountUsd, multiplier),
+            time: Date.now()
+        };
+    }
+
     // SECURE MATH (Everything is USD now)
     const winAmountUsd = safeMul(bet.amountUsd, multiplier);
     const profitUsd = safeSub(winAmountUsd, bet.amountUsd);
@@ -1754,6 +1764,90 @@ io.on('connection', async (socket) => {
                 } finally {
                     p.actionLock = false;
                 }
+            });
+
+            // --- FLEX BET (SHARE WIN TO CHAT) ---
+            const shareCooldowns = {};
+            const alreadySharedBets = new Set(); // Tracks unique bet signatures to prevent duplicate spam
+
+            socket.on('share_bet', async (data) => {
+                const p = players[userId];
+                if (!p) return socket.emit('error_msg', 'Login required to share bets.');
+
+                // 1. Anti-Spam Rate Limiter (30 seconds)
+                const lastShare = shareCooldowns[userId] || 0;
+                const timeLeftMs = 30000 - (Date.now() - lastShare);
+                if (timeLeftMs > 0) {
+                    const secs = Math.ceil(timeLeftMs / 1000);
+                    return socket.emit('error_msg', `Spam protection: Wait ${secs}s before flexing again.`);
+                }
+
+                const reqBet = parseFloat(data.bet);
+                const reqMult = parseFloat(data.mult);
+
+                // 2. Minimum Flex Rule (Must be at least 1.50x to brag)
+                if (isNaN(reqBet) || isNaN(reqMult) || reqMult < 1.50) {
+                    return socket.emit('error_msg', 'You can only flex multipliers of 1.50x or higher!');
+                }
+
+                // 3. Duplicate Spam Lock (Prevents sharing the exact same bet twice)
+                const betSignature = `${userId}_${reqBet}_${reqMult}`;
+                if (alreadySharedBets.has(betSignature)) {
+                    return socket.emit('error_msg', 'You have already shared this bet in the chat!');
+                }
+
+                // 4. Cryptographic/DB Verification
+                let isVerified = false;
+                let verifiedPayout = 0;
+
+                if (p.lastWin && p.lastWin.bet === reqBet && Math.abs(p.lastWin.mult - reqMult) < 0.01) {
+                    isVerified = true;
+                    verifiedPayout = p.lastWin.payout;
+                } else {
+                    // Verify against Supabase DB
+                    const { data: dbBet } = await supabase
+                        .from('bet_history')
+                        .select('bet_amount, cashout_mult, payout')
+                        .eq('user_id', userId)
+                        .eq('bet_amount', reqBet)
+                        .limit(1);
+
+                    if (dbBet && dbBet.length > 0) {
+                        const match = dbBet.find(b => Math.abs(parseFloat(b.cashout_mult) - reqMult) < 0.02);
+                        if (match) {
+                            isVerified = true;
+                            verifiedPayout = parseFloat(match.payout);
+                        }
+                    }
+                }
+
+                if (!isVerified) {
+                    return socket.emit('error_msg', 'UNVERIFIED BET: Cannot share to chat.');
+                }
+
+                // Lock this specific bet & trigger cooldown
+                alreadySharedBets.add(betSignature);
+                shareCooldowns[userId] = Date.now();
+
+                const profit = safeSub(verifiedPayout, reqBet);
+
+                // 5. Broadcast the Verified Flex Card to Chat
+                const flexMsg = {
+                    id: Date.now() + Math.random(),
+                    username: p.username,
+                    wagered: p.lifetimeWagered,
+                    timestamp: Date.now(),
+                    isFlex: true,
+                    bet: reqBet,
+                    mult: reqMult,
+                    profit: profit
+                };
+
+                chatHistory.push(flexMsg);
+                if (chatHistory.length > 50) chatHistory.shift();
+
+                io.emit('chat_message', flexMsg);
+                socket.emit('share_success');
             });
 
             // --- BC.GAME STYLE WELCOME WHEEL ---

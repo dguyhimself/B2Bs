@@ -2117,10 +2117,29 @@
             if(!audioEnabled) return;
             if(type === 'click') playTone(600, 'square', 0.1, 0.05);
             if(type === 'error') { playTone(150, 'sawtooth', 0.2, 0.1); setTimeout(()=>playTone(100, 'sawtooth', 0.3, 0.1), 150); }
-            if(type === 'success') { playTone(523.25, 'square', 0.1); setTimeout(()=>playTone(659.25, 'square', 0.2), 100); setTimeout(()=>playTone(783.99, 'square', 0.3), 200); }
-            if(type === 'launch') { playTone(200, 'sawtooth', 0.4, 0.1); setTimeout(()=>playTone(300, 'sawtooth', 0.4, 0.1), 100); }
-            // New Mention Ping!
-            if(type === 'mention') { playTone(800, 'sine', 0.1, 0.05); setTimeout(()=>playTone(1200, 'sine', 0.15, 0.05), 100); }
+
+            // Map BOTH 'success' and 'cashout' to the winning chime
+            if(type === 'success' || type === 'cashout') { 
+                playTone(523.25, 'square', 0.1); 
+                setTimeout(()=>playTone(659.25, 'square', 0.2), 100); 
+                setTimeout(()=>playTone(783.99, 'square', 0.3), 200); 
+            }
+
+            if(type === 'launch') { 
+                playTone(200, 'sawtooth', 0.4, 0.1); 
+                setTimeout(()=>playTone(300, 'sawtooth', 0.4, 0.1), 100); 
+            }
+
+            // ADDED THE CRASH SOUND TRIGGER
+            if(type === 'crash') { 
+                playNoise(1.5, 0.5); 
+            }
+
+            // Mention Ping!
+            if(type === 'mention') { 
+                playTone(800, 'sine', 0.1, 0.05); 
+                setTimeout(()=>playTone(1200, 'sine', 0.15, 0.05), 100); 
+            }
         }
 
         // --- VIP Ranking System (USDT Scale) ---

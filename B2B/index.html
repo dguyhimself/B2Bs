@@ -1728,7 +1728,7 @@
                             <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green);"></span>
                             <span style="font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--green);">MATHEMATICALLY VERIFIED</span>
                         </div>
-                        <span style="font-family: 'VT323', monospace; font-size: 14px; color: var(--text-dim);">House Edge: 5%</span>
+                        <span style="font-family: 'VT323', monospace; font-size: 14px; color: var(--text-dim);">House Edge: 1%</span>
                     </div>
 
                     <!-- Multiplier Card -->
@@ -1795,7 +1795,7 @@
                     </div>
 
                     <div style="background: rgba(0,0,0,0.5); padding: 10px; border-radius: 4px; border-left: 2px solid var(--green);">
-                        <span style="color: var(--text-dim); font-size: 14px;">Apply 5% House Edge to get final multiplier:</span><br>
+                        <span style="color: var(--text-dim); font-size: 14px;">Apply 1% House Edge to get final multiplier:</span><br>
                         <span style="color: var(--green);">Crash = 0.95 / (1 - R)</span>
                     </div>
                 </div>
@@ -3393,12 +3393,12 @@
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-            // 2. Perform Casino Math (5% House Edge)
+            // 2. Perform Casino Math (1% House Edge)
             const h = parseInt(seed.substring(0, 8), 16);
             const r = h / (Math.pow(2, 32) - 1);
             let crash = 1.00;
-            if (r > 0.05) {
-                const res = 0.95 / (1 - r);
+            if (r > 0.01) { // <-- Changed from 0.05 to 0.01
+                const res = 0.99 / (1 - r); // <-- Changed from 0.95 to 0.99
                 crash = Math.max(1.00, Math.min(res, 1000000.00));
             }
 

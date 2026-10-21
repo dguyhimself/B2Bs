@@ -211,7 +211,7 @@ app.get('/verify/:token', async (req, res) => {
 const GAME_STATE = { WAITING: 'WAITING', PLAYING: 'PLAYING', CRASHED: 'CRASHED' };
 const WAIT_TIME_MS = 6000;
 const GROWTH_RATE = 0.00006; 
-const HOUSE_EDGE = 0.05;
+const HOUSE_EDGE = 0.01;
 const MAX_PAYOUT_USD = 5000.00; // NEW: Max profit per round
 
 
@@ -563,7 +563,7 @@ function generateCrashPoint(seed) {
 
     if (r <= HOUSE_EDGE) return 1.00;
 
-    const result = 0.95 / (1 - r); // <-- Changed 0.99 to 0.95
+    const result = 0.99 / (1 - r); // <-- Changed from 0.95 to 0.99
     return Math.max(1.00, Math.min(result, 1000000.00));
 }
 

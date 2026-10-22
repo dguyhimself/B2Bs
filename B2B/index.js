@@ -720,7 +720,8 @@ async function crashGame() {
     const betsToLog = []; // NEW: Array for background database insertion
 
     for(const id in activeBets) {
-        if (activeBets[id].isBot) continue; // SECURITY: Ignore bots so they don't touch the DB!
+        if (activeBets[id].isBot) continue; 
+        if (activeBets[id].isDemo) continue; // EXCLUDE DEMO BETS FROM DB
 
         // Format the bet for the permanent database history
         betsToLog.push({
@@ -825,7 +826,7 @@ async function processCashout(userId, forcedMultiplier = null, reason = 'MANUAL'
     bet.cashoutMult = multiplier;
 
     // --- TRACK FOR INSTANT CHAT FLEX ---
-    if (players[userId]) {
+    if (players[userId] && !bet.isDemo) { // Ignore Demo bets for Flexing
         players[userId].lastWin = {
             bet: bet.amountUsd,
             mult: multiplier,
@@ -839,30 +840,31 @@ async function processCashout(userId, forcedMultiplier = null, reason = 'MANUAL'
     const profitUsd = safeSub(winAmountUsd, bet.amountUsd);
 
     if (players[userId]) {
-        players[userId].balance = safeAdd(players[userId].balance, winAmountUsd);
-        players[userId].lifetimeWon = safeAdd(players[userId].lifetimeWon, winAmountUsd);
-        players[userId].netProfit = safeAdd(players[userId].netProfit, profitUsd);
+        if (!bet.isDemo) { // ONLY UPDATE DB IF REAL BET
+            players[userId].balance = safeAdd(players[userId].balance, winAmountUsd);
+            players[userId].lifetimeWon = safeAdd(players[userId].lifetimeWon, winAmountUsd);
+            players[userId].netProfit = safeAdd(players[userId].netProfit, profitUsd);
 
-        // AWAIT the database update before telling the frontend it succeeded
-        try {
-            await supabase.from('users').update({
-                balance: players[userId].balance,
-                lifetime_won: players[userId].lifetimeWon,
-                net_profit: players[userId].netProfit,
-                active_bet_amount: 0 // Bet resolved successfully!
-            }).eq('id', userId);
-        } catch (dbErr) {
-            console.error("DB Update Error (Win):", dbErr);
+            try {
+                await supabase.from('users').update({
+                    balance: players[userId].balance,
+                    lifetime_won: players[userId].lifetimeWon,
+                    net_profit: players[userId].netProfit,
+                    active_bet_amount: 0 
+                }).eq('id', userId);
+            } catch (dbErr) {
+                console.error("DB Update Error (Win):", dbErr);
+            }
         }
-    }
 
-    io.to(userId).emit('cashout_success', { 
-        multiplier: multiplier.toFixed(2), 
-        winAmount: winAmountUsd.toFixed(2), 
-        balance: players[userId] ? players[userId].balance : 0,
-        stats: players[userId],
-        reason: reason 
-    });
+        io.to(userId).emit('cashout_success', { 
+            multiplier: multiplier.toFixed(2), 
+            winAmount: winAmountUsd.toFixed(2), 
+            balance: players[userId].balance, // Safely returns unaltered balance
+            stats: players[userId],
+            reason: reason 
+        });
+    }
 
     io.emit('player_cashed_out', {
         id: userId,
@@ -1542,33 +1544,35 @@ io.on('connection', async (socket) => {
                 return socket.emit('error_msg', `Max bet is $${MAX_PAYOUT_USD}`);
             }
 
-            if (isNaN(amountUsd) || amountUsd <= 0 || amountUsd > p.balance) {
+            // ALLOW 0 FOR DEMO MODE
+            if (isNaN(amountUsd) || amountUsd < 0 || amountUsd > p.balance) {
                 return socket.emit('error_msg', 'INSUFFICIENT FUNDS');
             }
 
+            const isDemo = amountUsd === 0;
             p.actionLock = true;
 
             try {
-                // SECURE MATH
-                p.balance = safeSub(p.balance, amountUsd);
-                p.lifetimeWagered = safeAdd(p.lifetimeWagered, amountUsd);
-                p.totalBets += 1;
+                if (!isDemo) {
+                    // SECURE MATH (Only if real money)
+                    p.balance = safeSub(p.balance, amountUsd);
+                    p.lifetimeWagered = safeAdd(p.lifetimeWagered, amountUsd);
+                    p.totalBets += 1;
 
-                // --- UPGRADED: AFFILIATE TIER SYSTEM ---
-                // We ONLY add it here. No rollback here!
-                if (p.referred_by) {
-                    pendingAffiliateWagers[p.referred_by] = safeAdd(pendingAffiliateWagers[p.referred_by] || 0, amountUsd);
+                    if (p.referred_by) {
+                        pendingAffiliateWagers[p.referred_by] = safeAdd(pendingAffiliateWagers[p.referred_by] || 0, amountUsd);
+                    }
+
+                    // SECURITY: We MUST `await` this database call. 
+                    const { error } = await supabase.from('users').update({
+                        balance: p.balance,
+                        lifetime_wagered: p.lifetimeWagered,
+                        total_bets: p.totalBets,
+                        active_bet_amount: amountUsd // Mark the money as "in the air"
+                    }).eq('id', userId);
+
+                    if (error) throw error; // If DB fails, trigger the catch block
                 }
-
-                // SECURITY: We MUST `await` this database call. 
-                const { error } = await supabase.from('users').update({
-                    balance: p.balance,
-                    lifetime_wagered: p.lifetimeWagered,
-                    total_bets: p.totalBets,
-                    active_bet_amount: amountUsd // Mark the money as "in the air"
-                }).eq('id', userId);
-
-                if (error) throw error; // If DB fails, trigger the catch block
 
                 // --- SECURITY: LATE BET RACE CONDITION FIX ---
                 if (currentState !== GAME_STATE.WAITING) {
@@ -1582,7 +1586,8 @@ io.on('connection', async (socket) => {
                     autoCashout: autoCashout,
                     cashedOut: false,
                     cashoutMult: null,
-                    wagered: p.lifetimeWagered 
+                    wagered: p.lifetimeWagered,
+                    isDemo: isDemo // Flag it so cashout ignores DB
                 };
 
                 // SECURE: Broadcast the bet acceptance to ALL tabs/devices
@@ -1597,35 +1602,34 @@ io.on('connection', async (socket) => {
             } catch (err) {
                 console.error("[BET ERROR] Bet rejected/failed:", err.message);
 
-                // Refund the memory balance safely
-                p.balance = safeAdd(p.balance, amountUsd);
-                p.lifetimeWagered = safeSub(p.lifetimeWagered, amountUsd);
-                p.totalBets = Math.max(0, p.totalBets - 1);
+                if (!isDemo) {
+                    // Refund the memory balance safely
+                    p.balance = safeAdd(p.balance, amountUsd);
+                    p.lifetimeWagered = safeSub(p.lifetimeWagered, amountUsd);
+                    p.totalBets = Math.max(0, p.totalBets - 1);
 
-                // --- THE PROPER ROLLBACK LOCATION ---
-                // If the bet failed, we subtract the wager volume back out of the batcher
-                if (p.referred_by) {
-                    pendingAffiliateWagers[p.referred_by] = Math.max(0, safeSub(pendingAffiliateWagers[p.referred_by] || 0, amountUsd));
+                    if (p.referred_by) {
+                        pendingAffiliateWagers[p.referred_by] = Math.max(0, safeSub(pendingAffiliateWagers[p.referred_by] || 0, amountUsd));
+                    }
+
+                    // Push rollback to DB
+                    supabase.from('users').update({
+                        balance: p.balance,
+                        lifetime_wagered: p.lifetimeWagered,
+                        total_bets: p.totalBets,
+                        active_bet_amount: 0
+                    }).eq('id', userId).then(({error}) => {
+                        if (error) console.error("Rollback DB Error:", error);
+                    });
                 }
-
-                // Push rollback to DB (fire and forget to unblock user quickly)
-                supabase.from('users').update({
-                    balance: p.balance,
-                    lifetime_wagered: p.lifetimeWagered,
-                    total_bets: p.totalBets,
-                    active_bet_amount: 0
-                }).eq('id', userId).then(({error}) => {
-                    if (error) console.error("Rollback DB Error:", error);
-                });
 
                 socket.emit('error_msg', 'Bet could not be placed in time. Refunded.');
             } finally {
-                // --- LOCK DISABLED ---
                 p.actionLock = false; 
             }
-        });
+        }); // <--- ADD THIS MISSING LINE!
 
-        socket.on('cash_out', () => processCashout(userId));
+            socket.on('cash_out', () => processCashout(userId));
 
         // --- Vault Rakeback System ---
         socket.on('claim_rakeback', async () => {

@@ -1257,7 +1257,10 @@
                     <div class="input-row">
                         <!-- Bet Amount Group -->
                         <div class="input-group">
-                            <label>BET AMOUNT</label>
+                            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
+                                <label style="margin-bottom: 0;">BET AMOUNT</label>
+                                <span style="font-family: 'VT323', monospace; font-size: 13px; color: var(--text-dim); letter-spacing: 0.5px;">&lt; $0 DEMO</span>
+                            </div>
                             <div class="input-wrap">
                                 <span style="color: var(--cyan);">$</span>
                                 <input type="number" id="bet-input" value="10.00" step="1.00">
@@ -2119,7 +2122,11 @@
         };
 
         function attemptBet() {
-            let a = parseFloat(ui.inpBet.value), o = parseFloat(ui.inpAuto.value);
+            let a = parseFloat(ui.inpBet.value) || 0;
+            let o = parseFloat(ui.inpAuto.value) || 2.00;
+
+            if (a < 0) a = 0; // Fix negative inputs
+
             if(a > myBalance) {
                 autoBetEnabled = false; 
                 updateButtonState(); 
@@ -4187,7 +4194,7 @@
             //createExplosion(cw/2, rocketY);
 
             // Instantly push this round's bet to the local history Array!
-            if (myBet) {
+            if (myBet && myBet.amount > 0) { // EXCLUDE DEMO BETS FROM HISTORY
                 myBetsHistory.unshift({
                     time: Date.now(),
                     bet: myBet.amount,
@@ -4233,10 +4240,9 @@
             setBtn('WIN'); ui.btnSub.innerText = '+' + d.winAmount;
             playSfx('cashout');
 
-            // 👇 ADD THIS FIX BLOCK 👇
             // RACE CONDITION FIX: If the crash message arrived milliseconds before this success message, 
             // the local history incorrectly recorded a loss. We must retroactively correct it to a WIN!
-            if (state === 'CRASHED' && myBetsHistory.length > 0) {
+            if (state === 'CRASHED' && myBetsHistory.length > 0 && myBet && myBet.amount > 0) {
                 myBetsHistory[0].mult = myBet.cashoutMult;
                 myBetsHistory[0].payout = myBet.amount * myBet.cashoutMult;
                 renderLiveTable(); // Instantly turns the row from gray to green!

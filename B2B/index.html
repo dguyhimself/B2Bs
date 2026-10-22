@@ -3393,12 +3393,12 @@
             const hashArray = Array.from(new Uint8Array(hashBuffer));
             const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
-            // 2. Perform Casino Math (1% House Edge)
+            // 2. Perform Casino Math (5% House Edge)
             const h = parseInt(seed.substring(0, 8), 16);
             const r = h / (Math.pow(2, 32) - 1);
             let crash = 1.00;
-            if (r > 0.01) { // <-- Changed from 0.05 to 0.01
-                const res = 0.99 / (1 - r); // <-- Changed from 0.95 to 0.99
+            if (r > 0.05) { // <-- Changed from 0.05 to 0.01
+                const res = 0.95 / (1 - r); // <-- Changed from 0.95 to 0.99
                 crash = Math.max(1.00, Math.min(res, 1000000.00));
             }
 

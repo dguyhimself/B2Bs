@@ -39,6 +39,8 @@
             overflow: hidden;
             position: relative; /* <-- ADD THIS LINE */
         }
+        /* Hide Desktop Logo on Mobile */
+        #desktop-logo { display: none; }
 
         /* Audio Unlock Overlay */
         #audio-overlay {
@@ -62,22 +64,36 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.4);
         }
 
-        /* Balance Group */
-        .bal-wrap { display: flex; flex-direction: column; gap: 6px; }
-        .bal-label-row { display: flex; align-items: center; gap: 8px; font-family: 'Press Start 2P', monospace; font-size: 8px; color: var(--text-dim); letter-spacing: 1px; }
-        .bal-val-row { display: flex; align-items: baseline; gap: 8px; }
-        #balance-display { font-size: 30px; color: var(--yellow); text-shadow: 0 0 12px rgba(255, 213, 0, 0.4); line-height: 1; }
-        #balance-sol { font-size: 14px; color: var(--green); opacity: 0.8; letter-spacing: 1px; }
+        /* --- UPGRADED BALANCE PILL --- */
+        .bal-wrap { 
+            display: flex; 
+            flex-direction: row; 
+            align-items: center; 
+            background: rgba(17, 18, 29, 0.7); 
+            border: 1px solid #23253b;
+            border-radius: 8px; 
+            padding: 7px 7px 7px 10px; /* Hugs the refresh button tightly */
+            gap: 10px; 
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .usdt-icon { width: 18px; height: 18px; flex-shrink: 0; filter: drop-shadow(0 0 4px rgba(38,161,123,0.4)); }
+        .bal-val-row { display: flex; align-items: center; margin-top: 2px; }
+        #balance-display { font-size: 22px; color: #fff; line-height: 1; letter-spacing: 0.5px; text-shadow: none;}
 
-        /* Refresh Button */
+        /* Sleek Refresh Button */
         .arcade-refresh-btn {
             display: inline-flex; align-items: center; justify-content: center;
-            width: 20px; height: 20px; padding: 0;
-            background: var(--cyan); border: none; border-radius: 4px;
-            color: #000; cursor: pointer;
-            box-shadow: 0 2px 0 #009926, 0 0 8px rgba(2, 155, 48, 0.74);
-            transition: all 0.1s ease;
+            width: 24px; height: 24px; padding: 0;
+            background: rgba(255,255,255,0.03); border: 1px solid transparent; border-radius: 6px;
+            color: var(--text-dim); cursor: pointer;
+            transition: all 0.2s ease; box-shadow: none;
         }
+        .arcade-refresh-btn:hover { 
+            background: rgba(38, 236, 0, 0.15); color: var(--green); border-color: rgba(38, 236, 0, 0.3);
+        }
+        .arcade-refresh-btn:active { transform: scale(0.9); }
+        @keyframes iconSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .refreshing-active svg { animation: iconSpin 0.8s linear infinite; color: var(--green); }
         .arcade-refresh-btn:active { transform: translateY(2px); box-shadow: none; }
         @keyframes iconSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .refreshing-active svg { animation: iconSpin 0.8s linear infinite; }
@@ -597,67 +613,81 @@
                 background: #040406; /* Deeper background for the whole page */
             }
 
-            /* 2. Header - Centered Logo Injection & Clean Spacing */
+            /* 2. Header - Logo on Left, Actions on Right */
             #header { 
                 grid-area: header; 
-                padding: 5 30px; 
+                padding: 12px 30px; /* Fixed previous invalid padding */
                 align-items: center;
                 background: #0a0b10; /* Solid distinct header */
                 border-bottom: 1px solid #1a1c29;
-                position: relative;
                 box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+                gap: 25px; /* Clean spacing between Balance and Wallet */
             }
 
-            /* Inject a centered logo using CSS to fill the empty space */
-            #header::before {
-                content: 'RETROCRUSH';
-                position: absolute;
-                left: 50%;
-                top: 50%;
-                transform: translate(-50%, -50%);
-                font-family: 'Press Start 2P', monospace;
-                font-size: 16px;
+            /* 2. Premium Desktop Logo Lockup */
+            #desktop-logo {
+                display: flex;
+                align-items: center;
+                gap: 12px; /* Perfect spacing between icon and text */
+                margin-right: auto; 
+                cursor: pointer;
+                user-select: none;
+                transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            }
+
+            /* Satisfying hover bounce */
+            #desktop-logo:hover {
+                transform: scale(1.03); 
+            }
+
+            .logo-icon {
                 color: var(--cyan);
-                letter-spacing: 2px;
-                text-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
-                pointer-events: none;
+                filter: drop-shadow(0 0 8px rgba(0, 243, 255, 0.5));
+            }
+
+            .logo-text {
+                font-family: 'Press Start 2P', monospace;
+                font-size: 18px;
+                color: #ffffff; /* Stark white base makes it look professional */
+                letter-spacing: 1px;
+            }
+
+            /* Neon Cyan Accent */
+            .logo-text .highlight {
+                color: var(--cyan); 
+                text-shadow: 0 0 12px rgba(0, 243, 255, 0.4);
+            }
+
+            /* Golden Cyberpunk Badge */
+            .logo-space {
+                font-family: 'VT323', monospace;
+                font-size: 14px;
+                font-weight: bold;
+                background: linear-gradient(135deg, var(--yellow) 0%, #cca900 100%);
+                color: #000;
+                padding: 2px 6px;
+                border-radius: 4px;
+                margin-left: 6px;
+                transform: translateY(-8px); /* Floats it up like a TM/Beta tag */
+                box-shadow: 0 4px 10px rgba(255, 213, 0, 0.3);
+                letter-spacing: 1px;
             }
 
             /* --- Premium Desktop Balance Panel --- */
+            /* --- Premium Desktop Balance Panel --- */
             .bal-wrap {
-                flex-direction: row; 
-                align-items: center;
-                background: #151726; /* Deep dark inset background */
-                border: none;
-                border-radius: 12px;
-                padding: 8px 16px;
-                gap: 15px;
-                box-shadow: none;
-            }
-
-            .bal-label-row {
-                flex-direction: row-reverse; /* Puts the green refresh button on the left */
-                border-right: 1px solid #1a1c29;
-                padding-right: 15px;
+                padding: 5px 5px 5px 12px;
                 gap: 12px;
-                font-size: 9px;
-                color: #c9c9c9;
+                background: #11121d; 
+                border: 1px solid #1a1c29;
+                border-radius: 8px;
             }
+            .usdt-icon { width: 22px; height: 22px; }
+            #balance-display { font-size: 22px; text-shadow: 0 0 10px rgba(255,255,255,0.05); }
+            .arcade-refresh-btn { width: 28px; height: 28px; }
 
-            .bal-val-row {
-                align-items: center;
-                gap: 8px;
-            }
-
-            #balance-display { 
-                font-size: 22px; 
-                text-shadow: 0 0 10px rgba(255, 213, 0, 0.2); 
-            }
-
-            #balance-sol { 
-                font-size: 11px; 
-                opacity: 0.4; 
-            }
+            #balance-sol { display: none !important; }
+            .bal-val-row { display: flex !important; align-items: center; margin-top: 0; }
             
             /* 3. Sleek App-Style Left Sidebar */
             #bottom-nav { 
@@ -1340,6 +1370,26 @@
         }
         .hist-flex-btn:hover { background: var(--yellow); color: #000; }
         .hist-flex-btn:active { transform: scale(0.92); }
+        /* --- REMOVE UGLY SCROLLBARS GLOBALLY --- */
+        /* Targets the Game, Chat, Profile, Ranks, and Modals */
+        #view-game, 
+        #chat-messages, 
+        #view-profile, 
+        #view-ranks, 
+        #view-live,
+        #algo-modal-content {
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+
+        #view-game::-webkit-scrollbar, 
+        #chat-messages::-webkit-scrollbar, 
+        #view-profile::-webkit-scrollbar, 
+        #view-ranks::-webkit-scrollbar,
+        #view-live::-webkit-scrollbar,
+        #algo-modal-content::-webkit-scrollbar {
+            display: none; /* Chrome/Safari/Edge */
+        }
     </style>
 </head>
 <body>
@@ -1358,20 +1408,37 @@
             <div class="loader-bar"><div class="loader-fill"></div></div>
         </div>
     <div id="header">
+        <!-- BRAND NEW DESKTOP LOGO -->
+        <!-- BRAND NEW DESKTOP LOGO LOCKUP -->
+        <div id="desktop-logo" onclick="window.location.reload()" title="Home">
+            <!-- Glowing Rocket Icon -->
+            <!-- Glowing Solid Rocket Icon -->
+            <svg class="logo-icon" width="28" height="28" viewBox="0 0 24 24" fill="var(--cyan)" stroke="none">
+                <path d="M21.61 2.39C21.61 2.39 16.66 .269 11 5.93C8.81 8.12 7.5 10.53 6.65 12.64C6.37 13.39 6.56 14.21 7.11 14.77L9.24 16.89C9.79 17.45 10.61 17.63 11.36 17.35C13.5 16.5 15.88 15.19 18.07 13C23.73 7.34 21.61 2.39 21.61 2.39M14.54 9.46C13.44 10.56 11.64 10.56 10.54 9.46C9.44 8.36 9.44 6.56 10.54 5.46C11.64 4.36 13.44 4.36 14.54 5.46C15.64 6.56 15.64 8.36 14.54 9.46M13.13 22.19L11.5 18.36C13.07 17.78 14.54 17 15.9 16.09L13.13 22.19M5.64 12.5L1.81 10.87L7.91 8.1C7 9.46 6.22 10.93 5.64 12.5M8.88 16.53L7.47 15.12L3.18 19.41C2.79 19.8 2.79 20.43 3.18 20.82L3.89 21.53C4.28 21.92 4.91 21.92 5.3 21.53L8.88 16.53Z" />
+            </svg>
+
+            <div style="display: flex; align-items: center;">
+                <span class="logo-text">RETRO<span class="highlight">CRUSH</span></span>
+                <span class="logo-space">SPACE</span>
+            </div>
+        </div>
         <!-- Left: Balance -->
         <div class="bal-wrap">
-            <div class="bal-label-row">
-                BALANCE (USDT)
-                <button id="refresh-btn" class="arcade-refresh-btn" onclick="checkDeposits()">
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="square">
-                        <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
-                    </svg>
-                </button>
-            </div>
+            <!-- Authentic Tether (USDT) Logo -->
+            <svg class="usdt-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 24C18.6274 24 24 18.6274 24 12C24 5.37258 18.6274 0 12 0C5.37258 0 0 5.37258 0 12C0 18.6274 5.37258 24 12 24Z" fill="#26A17B"/>
+                <path d="M12.9805 10.6045V14.5422H11.0205V10.6045H7.74707V8.89551H16.2539V10.6045H12.9805Z" fill="white"/>
+            </svg>
             <div class="bal-val-row">
                 <span id="balance-display">$0.00</span> 
-                <span id="balance-sol">(TRC20)</span>
+                <span id="balance-sol" style="display:none;"></span> <!-- Hidden safely -->
             </div>
+            <!-- Sleek Refresh Button -->
+            <button id="refresh-btn" class="arcade-refresh-btn" onclick="checkDeposits()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                </svg>
+            </button>
         </div>
 
         <!-- Right: Actions -->

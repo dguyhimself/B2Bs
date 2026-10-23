@@ -431,7 +431,7 @@
             display: flex; 
             flex-direction: column; 
             gap: 8px; /* Tighter gap */
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+            box-shadow: none;
         }
 
         /* Auto-Bet Mode Tabs */
@@ -581,7 +581,228 @@
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        @media (min-width: 768px) { body { max-width: 450px; margin: 0 auto; border: 2px solid var(--panel-border); } }
+        /* --- FULL DESKTOP ARCHITECTURE (1024px+) --- */
+        @media (min-width: 1024px) {
+            /* 1. Master Grid setup */
+            body { 
+                max-width: 100%; 
+                margin: 0; 
+                border: none;
+                display: grid;
+                grid-template-columns: 90px 1fr; /* Sleek, fixed-width sidebar */
+                grid-template-rows: 70px 1fr;
+                grid-template-areas: 
+                    "header header"
+                    "nav main";
+                background: #040406; /* Deeper background for the whole page */
+            }
+
+            /* 2. Header - Centered Logo Injection & Clean Spacing */
+            #header { 
+                grid-area: header; 
+                padding: 5 30px; 
+                align-items: center;
+                background: #0a0b10; /* Solid distinct header */
+                border-bottom: 1px solid #1a1c29;
+                position: relative;
+                box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            }
+
+            /* Inject a centered logo using CSS to fill the empty space */
+            #header::before {
+                content: 'RETROCRUSH';
+                position: absolute;
+                left: 50%;
+                top: 50%;
+                transform: translate(-50%, -50%);
+                font-family: 'Press Start 2P', monospace;
+                font-size: 16px;
+                color: var(--cyan);
+                letter-spacing: 2px;
+                text-shadow: 0 0 15px rgba(0, 243, 255, 0.3);
+                pointer-events: none;
+            }
+
+            /* --- Premium Desktop Balance Panel --- */
+            .bal-wrap {
+                flex-direction: row; 
+                align-items: center;
+                background: #151726; /* Deep dark inset background */
+                border: none;
+                border-radius: 12px;
+                padding: 8px 16px;
+                gap: 15px;
+                box-shadow: none;
+            }
+
+            .bal-label-row {
+                flex-direction: row-reverse; /* Puts the green refresh button on the left */
+                border-right: 1px solid #1a1c29;
+                padding-right: 15px;
+                gap: 12px;
+                font-size: 9px;
+                color: #c9c9c9;
+            }
+
+            .bal-val-row {
+                align-items: center;
+                gap: 8px;
+            }
+
+            #balance-display { 
+                font-size: 22px; 
+                text-shadow: 0 0 10px rgba(255, 213, 0, 0.2); 
+            }
+
+            #balance-sol { 
+                font-size: 11px; 
+                opacity: 0.4; 
+            }
+            
+            /* 3. Sleek App-Style Left Sidebar */
+            #bottom-nav { 
+                grid-area: nav; 
+                flex-direction: column; 
+                justify-content: flex-start; 
+                padding-top: 20px; 
+                gap: 12px; 
+                border-top: none; 
+                border-right: 1px solid #1a1c29; 
+                background: #07080c;
+                box-shadow: none;
+            }
+            .nav-btn { 
+                width: 70px;
+                height: 70px;
+                margin: 0 auto;
+                font-size: 9px; 
+                gap: 8px; 
+                border-radius: 12px;
+                border: 1px solid transparent;
+            }
+            .nav-btn:hover { 
+                transform: none; 
+                background: rgba(255, 255, 255, 0.03); 
+            }
+            .nav-btn.active { 
+                background: rgba(103, 255, 113, 0.05);
+                border: none;
+                box-shadow: none;
+            }
+
+            /* Hide chat tab button on desktop (Chat is permanently visible) */
+            .nav-btn[onclick*="'chat'"] { display: none; } 
+
+            /* 4. Main Viewpoint & Chat */
+            #main-view {
+                grid-area: main;
+                display: flex;
+                flex-direction: row;
+                padding: 0; 
+            }
+
+            .view-tab {
+                position: static !important; 
+                flex: 1; 
+                height: 100%;
+            }
+
+            /* Pin Chat Permanently to the Right */
+            #view-chat {
+                display: flex !important;
+                flex: 0 0 320px !important; /* Slightly thinner chat so game has more room */
+                border-left: 1px solid #1a1c29;
+                background: #090a10;
+                box-shadow: -5px 0 25px rgba(0,0,0,0.2);
+            }
+
+            /* 5. Game Screen Restructure (Floating Panel Look) */
+            #view-game {
+                padding: 25px 35px; /* Adds space around the game area */
+                background: transparent;
+            }
+
+            .game-main-screen {
+                flex-direction: row;
+                min-height: 65vh;
+                border-radius: 12px;
+                overflow: hidden; /* Clips the graph and controls beautifully into a box */
+                border: 1px solid #1a1c29;
+                box-shadow: none;
+                background: #0b0c13;
+            }
+
+            #game-container {
+                border-right: 1px solid #1a1c29;
+                border-bottom: none;
+                box-shadow: inset -20px -20px 60px rgba(0,0,0,0.2);
+            }
+
+            /* 6. Betting Controls side panel */
+            #controls {
+                width: 325px;
+                border-top: none;
+                border-bottom: none;
+                padding: 25px 20px;
+                background: #11121d;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .input-row { flex-direction: column; gap: 15px; }
+            .input-group { padding: 12px 15px; }
+            .input-wrap input { font-size: 24px; }
+
+            /* 7. FIXED SIZE ACTION BUTTON (Prevents Shifting!) */
+            #action-btn { 
+                margin-top: auto; /* Pushes button to the very bottom */
+                padding: 0; 
+                height: 65px; /* Absolute fixed height */
+                min-height: 65px; 
+                max-height: 65px; 
+                width: 100%;
+                border-radius: 8px;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                gap: 4px;
+                box-sizing: border-box;
+                overflow: hidden; 
+                transition: filter 0.1s, transform 0.1s;
+            }
+            #btn-main-text { font-size: 14px; }
+            #btn-subtext { font-size: 13px; }
+            #action-btn:hover { filter: brightness(1.1); transform: none; }
+            #action-btn:active { transform: scale(0.98); }
+
+            /* 8. Widen Data Tables & Add Floating Look */
+            #game-live-bets { 
+                padding: 25px 30px; 
+                border-radius: 12px;
+                border: 1px solid #1a1c29;
+                margin-top: 25px; /* Spacing below the game graph */
+                background: #0b0c13;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                border-top: 1px solid #1a1c29; /* Overrides old dashed border */
+            }
+
+            .round-stats-bar {
+                grid-template-columns: repeat(4, 1fr); 
+                margin: -25px -30px 20px -30px;
+                padding: 15px 30px;
+            }
+            .round-stats-bar > div {
+                text-align: center !important;
+                border-right: 1px solid rgba(255,255,255,0.05);
+            }
+            .round-stats-bar > div:last-child { border-right: none; }
+
+            /* Profile & Ranks Floating Look */
+            #view-profile, #view-ranks { padding: 30px 50px; background: transparent; }
+            .dashboard-grid { grid-template-columns: repeat(4, 1fr); }
+            #leaderboard-body > div { padding: 15px 25px !important; margin-bottom: 5px; }
+        }
         /* --- REDESIGNED CHAT TAB --- */
         #view-chat { background: rgba(17, 17, 17, 0.3); display: none; flex-direction: column; height: 100%; overflow: hidden; position: relative; }
         #view-chat.active { display: flex; }
@@ -3452,6 +3673,18 @@
             if (event) event.stopPropagation();
             playSfx('click');
 
+            // --- SMART POSITIONING FIX ---
+            // This calculates exactly where the button is on the user's screen
+            // and locks the popover directly underneath it on ALL devices.
+            const btnRect = event.currentTarget.getBoundingClientRect();
+            const popover = document.getElementById('history-popover');
+
+            popover.style.position = 'fixed';
+            popover.style.top = (btnRect.bottom + 8) + 'px';
+            popover.style.right = (window.innerWidth - btnRect.right) + 'px';
+            popover.style.left = 'auto'; // Ensures it doesn't stretch
+            // -----------------------------
+
             const listEl = document.getElementById('hm-list');
             listEl.innerHTML = '';
             const reversed = [...localHistory].reverse();
@@ -3464,7 +3697,6 @@
                 else if (r.mult >= 10) { dotColor = 'var(--yellow)'; textColor = 'var(--yellow)'; }
                 else if (r.mult >= 2) { dotColor = 'var(--green)'; textColor = 'var(--green)'; }
 
-                // ADDED ONCLICK AND CURSOR TO THE ROW HERE
                 listEl.innerHTML += `
                     <div class="hp-row" style="cursor: pointer;" onclick="copyHistorySeed('${r.seed}', event)" title="Click to copy Seed">
                         <div style="display: flex; align-items: center; gap: 8px;">

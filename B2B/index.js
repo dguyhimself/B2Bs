@@ -2141,11 +2141,15 @@ setInterval(async () => {
     const refsToUpdate = Object.keys(pendingAffiliateWagers);
     if (refsToUpdate.length === 0) return;
 
-    // The Tier System Math
+    // The Tier System Math (RevShare Model)
     function getAffiliateRate(totalReferred) {
-        if (totalReferred >= 51) return 0.0125; // 1.25% (VIP Partner)
-        if (totalReferred >= 11) return 0.0075; // 0.75% (Level 2)
-        return 0.005;                           // 0.50% (Level 1 - Base 5x boost!)
+        // The casino's ACTUAL house edge is 5% (0.05). 
+        // We pay affiliates a percentage of that real profit (RevShare).
+        const HE = 0.05; 
+
+        if (totalReferred >= 50) return HE * 0.40; // 40% RevShare (VIP Streamer - gets 2.00% of raw wager!)
+        if (totalReferred >= 10) return HE * 0.25; // 25% RevShare (Level 2 - gets 1.25% of raw wager)
+        return HE * 0.15;                          // 15% RevShare (Base Level - gets 0.75% of raw wager)
     }
 
     for (const refId of refsToUpdate) {

@@ -1477,19 +1477,19 @@
                         </div>
                     </div>
 
-                    <!-- Bottom: Mini 3-Tier Roadmap (Mobile Friendly) -->
+                    <!-- Bottom: Mini 3-Tier Roadmap (Streamer Friendly) -->
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; padding-top: 2px;">
                         <div id="aff-step-1" style="background: rgba(38, 236, 0, 0.08); border: 1px solid rgba(38, 236, 0, 0.4); border-radius: 5px; padding: 6px 4px; text-align: center;">
                             <div style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--cyan);">LVL 1</div>
-                            <div style="font-family: 'VT323', monospace; font-size: 13px; color: #fff;">0.5% (0+)</div>
+                            <div style="font-family: 'VT323', monospace; font-size: 13px; color: #fff;">15% RevShare</div>
                         </div>
                         <div id="aff-step-2" style="background: rgba(255, 255, 255, 0.02); border: 1px solid #1a1c29; border-radius: 5px; padding: 6px 4px; text-align: center;">
                             <div style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim);">LVL 2</div>
-                            <div style="font-family: 'VT323', monospace; font-size: 13px; color: var(--text-dim);">0.75% (11+)</div>
+                            <div style="font-family: 'VT323', monospace; font-size: 13px; color: var(--text-dim);">25% RevShare</div>
                         </div>
                         <div id="aff-step-3" style="background: rgba(255, 255, 255, 0.02); border: 1px solid #1a1c29; border-radius: 5px; padding: 6px 4px; text-align: center;">
                             <div style="font-family: 'Press Start 2P', monospace; font-size: 7px; color: var(--text-dim);">VIP</div>
-                            <div style="font-family: 'VT323', monospace; font-size: 13px; color: var(--text-dim);">1.25% (51+)</div>
+                            <div style="font-family: 'VT323', monospace; font-size: 13px; color: var(--text-dim);">40% RevShare</div>
                         </div>
                     </div>
                 </div>
@@ -2844,15 +2844,15 @@
             const availableRakebackUsd = availableRakebackSol; // 1:1
             document.getElementById('vip-rakeback-val').innerText = `+$${availableRakebackUsd.toFixed(2)}`;
 
-// --- UPGRADED: Mobile Affiliate Tier Controller ---
+            // --- UPGRADED: Streamer-Ready RevShare Tier Controller ---
             const totalRef = p.totalReferred || 0;
-            let affRate = "0.50%";
+            let affRate = "15% RevShare";
             let affTitle = "LEVEL 1 AFFILIATE";
             let affBadge = "1";
             let affColor = "var(--cyan)";
             let affProgress = 0;
-            let affCountText = `${totalRef} / 11 INVITED`;
-            let affNextText = `${Math.max(0, 11 - totalRef)} more to Level 2`;
+            let affCountText = `${totalRef} / 10 INVITED`;
+            let affNextText = `${Math.max(0, 10 - totalRef)} more to Level 2`;
 
             const s1 = document.getElementById('aff-step-1');
             const s2 = document.getElementById('aff-step-2');
@@ -2867,14 +2867,15 @@
                 el.children[1].style.color = 'var(--text-dim)';
             });
 
-            if (totalRef >= 51) {
-                affRate = "1.25%";
+            if (totalRef >= 50) {
+                affRate = "40% RevShare";
                 affTitle = "VIP PARTNER";
-                affBadge = "★";
+                // Sleek SVG Crown for VIPs
+                affBadge = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="2 20 22 20 19 6 15 12 12 2 9 12 5 6 2 20"></polygon></svg>`;
                 affColor = "var(--magenta)";
                 affProgress = 100;
                 affCountText = `${totalRef} INVITED (MAX TIER)`;
-                affNextText = "MAX COMMISSION";
+                affNextText = "MAX COMMISSION UNLOCKED";
 
                 if (s3) {
                     s3.style.background = 'rgba(255, 0, 234, 0.1)';
@@ -2882,14 +2883,14 @@
                     s3.children[0].style.color = 'var(--magenta)';
                     s3.children[1].style.color = '#fff';
                 }
-            } else if (totalRef >= 11) {
-                affRate = "0.75%";
+            } else if (totalRef >= 10) {
+                affRate = "25% RevShare";
                 affTitle = "LEVEL 2 AFFILIATE";
                 affBadge = "2";
                 affColor = "var(--yellow)";
-                affProgress = Math.min(100, ((totalRef - 11) / 40) * 100);
-                affCountText = `${totalRef} / 51 INVITED`;
-                affNextText = `${51 - totalRef} more to VIP`;
+                affProgress = Math.min(100, ((totalRef - 10) / 40) * 100);
+                affCountText = `${totalRef} / 50 INVITED`;
+                affNextText = `${50 - totalRef} more to VIP Partner`;
 
                 if (s2) {
                     s2.style.background = 'rgba(255, 213, 0, 0.1)';
@@ -2898,7 +2899,7 @@
                     s2.children[1].style.color = '#fff';
                 }
             } else {
-                affProgress = Math.min(100, (totalRef / 11) * 100);
+                affProgress = Math.min(100, (totalRef / 10) * 100);
 
                 if (s1) {
                     s1.style.background = 'rgba(38, 236, 0, 0.1)';
@@ -2917,7 +2918,7 @@
             const fillEl = document.getElementById('aff-progress-fill');
 
             if (badgeEl) {
-                badgeEl.innerText = affBadge;
+                badgeEl.innerHTML = affBadge; // Changed to innerHTML to support the SVG Crown!
                 badgeEl.style.borderColor = affColor;
                 badgeEl.style.color = affColor;
                 badgeEl.style.background = `${affColor}20`;

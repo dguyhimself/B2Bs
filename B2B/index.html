@@ -3814,11 +3814,18 @@
             if (event) event.stopPropagation();
             playSfx('click');
 
+            const popover = document.getElementById('history-popover');
+
+            // Check if it's already open. If yes, close it and stop here!
+            if (popover.classList.contains('show')) {
+                popover.classList.remove('show');
+                return;
+            }
+
             // --- SMART POSITIONING FIX ---
             // This calculates exactly where the button is on the user's screen
             // and locks the popover directly underneath it on ALL devices.
             const btnRect = event.currentTarget.getBoundingClientRect();
-            const popover = document.getElementById('history-popover');
 
             popover.style.position = 'fixed';
             popover.style.top = (btnRect.bottom + 8) + 'px';

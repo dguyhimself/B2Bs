@@ -85,7 +85,7 @@
             display: inline-flex; align-items: center; justify-content: center;
             width: 24px; height: 24px; padding: 0;
             background: rgba(255,255,255,0.03); border: 1px solid transparent; border-radius: 6px;
-            color: var(--text-dim); cursor: pointer;
+            color: var(--green); cursor: pointer;
             transition: all 0.2s ease; box-shadow: none;
         }
         .arcade-refresh-btn:hover { 
@@ -817,7 +817,7 @@
             .round-stats-bar {
                 grid-template-columns: repeat(4, 1fr); 
                 /* 1. Remove negative margin, add bottom space to separate from the table */
-                margin: -8px 0 25px 0;
+                margin: -12px 0 25px 0;
                 padding: 15px 30px;
                 /* 2. Make it a pill shape */
                 border-radius: 50px;
@@ -1081,7 +1081,7 @@
 
         #update-notice-content {
             background: linear-gradient(180deg, #11121d 0%, #0a0a10 100%);
-            border: 1px solid var(--cyan);
+            border: none;
             border-radius: 16px;
             padding: 30px 25px;
             width: 90%;

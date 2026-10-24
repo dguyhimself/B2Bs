@@ -632,12 +632,8 @@
                 margin-right: auto; 
                 cursor: pointer;
                 user-select: none;
-                transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            }
-
-            /* Satisfying hover bounce */
-            #desktop-logo:hover {
-                transform: scale(1.03); 
+                transition: none;
+                margin-left: -12px;
             }
 
             .logo-icon {
@@ -667,10 +663,11 @@
                 color: #000;
                 padding: 2px 6px;
                 border-radius: 4px;
-                margin-left: 6px;
+                margin-left: 5px;
                 transform: translateY(-8px); /* Floats it up like a TM/Beta tag */
                 box-shadow: 0 4px 10px rgba(255, 213, 0, 0.3);
                 letter-spacing: 1px;
+                margin-top: 12px;
             }
 
             /* --- Premium Desktop Balance Panel --- */
@@ -819,8 +816,16 @@
 
             .round-stats-bar {
                 grid-template-columns: repeat(4, 1fr); 
-                margin: -25px -30px 20px -30px;
+                /* 1. Remove negative margin, add bottom space to separate from the table */
+                margin: -8px 0 25px 0;
                 padding: 15px 30px;
+                /* 2. Make it a pill shape */
+                border-radius: 50px;
+                /* 3. Add full borders to complete the pill look (base css only had top/bottom) */
+                border: none;
+                /* 4. Enhance background and add a soft shadow for depth */
+                background: rgba(0, 166, 26, 0.08);
+                box-shadow: none;
             }
             .round-stats-bar > div {
                 text-align: center !important;
@@ -1064,6 +1069,49 @@
         .live-row.crashed { opacity: 0.6; }
         .live-row.crashed .col-mult { color: var(--red); }
         .live-row.crashed .col-profit { color: var(--text-dim); }
+        /* --- SYSTEM UPDATE NOTICE MODAL --- */
+        #update-notice-modal {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 100000; /* Highest priority */
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            backdrop-filter: blur(8px);
+            opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+        }
+        #update-notice-modal.show { opacity: 1; pointer-events: auto; }
+
+        #update-notice-content {
+            background: linear-gradient(180deg, #11121d 0%, #0a0a10 100%);
+            border: 1px solid var(--cyan);
+            border-radius: 16px;
+            padding: 30px 25px;
+            width: 90%;
+            max-width: 420px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.9), inset 0 0 20px rgba(38, 236, 0, 0.05);
+            display: flex; flex-direction: column; align-items: center; text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #update-notice-modal.show #update-notice-content { transform: scale(1); }
+
+        .un-icon { 
+            color: var(--cyan); 
+            margin-bottom: 20px; 
+            filter: drop-shadow(0 0 12px rgba(38,236,0,0.4)); 
+            animation: spinSlow 6s linear infinite; 
+        }
+        @keyframes spinSlow { 100% { transform: rotate(360deg); } }
+
+        .un-title { font-family: 'Press Start 2P', monospace; font-size: 14px; color: #fff; margin-bottom: 15px; line-height: 1.4; letter-spacing: 0.5px; }
+        .un-desc { font-family: 'VT323', monospace; font-size: 19px; color: var(--text-dim); line-height: 1.4; margin-bottom: 25px; }
+        .un-highlight { color: var(--yellow); }
+
+        .un-btn {
+            width: 100%; padding: 15px; background: var(--cyan); color: #000;
+            border: none; font-family: 'Press Start 2P', monospace; font-size: 10px;
+            cursor: pointer; border-radius: 8px; box-shadow: 0 4px 0 #009926;
+            transition: all 0.1s ease; letter-spacing: 1px;
+        }
+        .un-btn:active { transform: translateY(4px); box-shadow: none; }
         /* --- LUCKY WHEEL CSS --- */
         #wheel-modal {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -1410,24 +1458,25 @@
     <div id="header">
         <!-- BRAND NEW DESKTOP LOGO -->
         <!-- BRAND NEW DESKTOP LOGO LOCKUP -->
-        <div id="desktop-logo" onclick="window.location.reload()" title="Home">
+        <div id="desktop-logo">
             <!-- Glowing Rocket Icon -->
             <!-- Glowing Solid Rocket Icon -->
-            <svg class="logo-icon" width="28" height="28" viewBox="0 0 24 24" fill="var(--cyan)" stroke="none">
+            <svg class="logo-icon" width="32" height="32" viewBox="0 0 24 24" fill="var(--cyan)" stroke="none">
                 <path d="M21.61 2.39C21.61 2.39 16.66 .269 11 5.93C8.81 8.12 7.5 10.53 6.65 12.64C6.37 13.39 6.56 14.21 7.11 14.77L9.24 16.89C9.79 17.45 10.61 17.63 11.36 17.35C13.5 16.5 15.88 15.19 18.07 13C23.73 7.34 21.61 2.39 21.61 2.39M14.54 9.46C13.44 10.56 11.64 10.56 10.54 9.46C9.44 8.36 9.44 6.56 10.54 5.46C11.64 4.36 13.44 4.36 14.54 5.46C15.64 6.56 15.64 8.36 14.54 9.46M13.13 22.19L11.5 18.36C13.07 17.78 14.54 17 15.9 16.09L13.13 22.19M5.64 12.5L1.81 10.87L7.91 8.1C7 9.46 6.22 10.93 5.64 12.5M8.88 16.53L7.47 15.12L3.18 19.41C2.79 19.8 2.79 20.43 3.18 20.82L3.89 21.53C4.28 21.92 4.91 21.92 5.3 21.53L8.88 16.53Z" />
             </svg>
 
             <div style="display: flex; align-items: center;">
                 <span class="logo-text">RETRO<span class="highlight">CRUSH</span></span>
-                <span class="logo-space">SPACE</span>
+                <span class="logo-space">.SPACE</span>
             </div>
         </div>
         <!-- Left: Balance -->
         <div class="bal-wrap">
             <!-- Authentic Tether (USDT) Logo -->
-            <svg class="usdt-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 24C18.6274 24 24 18.6274 24 12C24 5.37258 18.6274 0 12 0C5.37258 0 0 5.37258 0 12C0 18.6274 5.37258 24 12 24Z" fill="#26A17B"/>
-                <path d="M12.9805 10.6045V14.5422H11.0205V10.6045H7.74707V8.89551H16.2539V10.6045H12.9805Z" fill="white"/>
+            <!-- Official Tether (USDT) Logo -->
+            <svg class="usdt-icon" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="16" cy="16" r="16" fill="#26A17B"/>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M17.922 13.793v-2.366h5.414V7.819H8.595v3.608h5.414v2.365c-4.4.202-7.709 1.074-7.709 2.118 0 1.044 3.309 1.915 7.709 2.118v7.582h3.913v-7.584c4.393-.202 7.694-1.073 7.694-2.116 0-1.043-3.301-1.914-7.694-2.118zm0 2.926c3.003-.134 5.348-.605 5.348-1.157 0-.553-2.345-1.024-5.348-1.157v2.314zm-3.913-2.314c-3.003.133-5.348.604-5.348 1.157 0 .552 2.345 1.023 5.348 1.157v-2.314z" fill="#ffffff"/>
             </svg>
             <div class="bal-val-row">
                 <span id="balance-display">$0.00</span> 
@@ -2121,6 +2170,26 @@
                 </div>
             </div>
         </div>
+        <!-- SYSTEM UPDATE NOTICE MODAL -->
+        <div id="update-notice-modal">
+            <div id="update-notice-content">
+                <div class="un-icon">
+                    <!-- Sleek Syncing/Update SVG Icon -->
+                    <svg width="55" height="55" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="23 4 23 10 17 10"></polyline>
+                        <polyline points="1 20 1 14 7 14"></polyline>
+                        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                </div>
+                <div class="un-title">NETWORK UPGRADE<br>IN PROGRESS</div>
+                <div class="un-desc">
+                    We are currently deploying backend infrastructure upgrades.<br><br>
+                    <span class="un-highlight">Deposits, Withdrawals, and Affiliate Commissions</span> may experience slight delays or stalls until the sync is complete.<br><br>
+                    <span style="color: #fff;">Gameplay & betting remain fully operational.</span>
+                </div>
+                <button class="un-btn" onclick="closeUpdateNotice()">I UNDERSTAND</button>
+            </div>
+        </div>
         <!-- LUCKY SPIN MODAL -->
         <div id="wheel-modal">
             <!-- Inner wrapper for the pop-in zoom effect -->
@@ -2255,6 +2324,11 @@
             playSfx('click');
             localStorage.removeItem('arcade_token');
             window.location.href = '/auth'; // Redirect to auth page on logout
+        };
+
+        window.closeUpdateNotice = () => {
+            playSfx('click');
+            document.getElementById('update-notice-modal').classList.remove('show');
         };
 
         // If the server explicitly rejects their token, kick them to the login page
@@ -4346,6 +4420,7 @@
                 document.getElementById('chat-input').placeholder = "Login to chat...";
                 document.getElementById('chat-input').readOnly = true; // Prevents phone keyboard from popping up
             }
+            
 
             // --- HIDE THE LOADING SCREEN ---
             const loader = document.getElementById('loading-overlay');
@@ -4354,6 +4429,11 @@
                 loader.style.visibility = 'hidden';
                 setTimeout(() => loader.style.display = 'none', 400); // Wait for CSS fade out
             }
+            // --- SHOW SYSTEM UPDATE WARNING AFTER LOAD ---
+            setTimeout(() => {
+                const updateModal = document.getElementById('update-notice-modal');
+                if (updateModal) updateModal.classList.add('show');
+            }, 800); // 800ms delay creates a smooth transition after the loader disappears
             // -------------------------------
             updateStats(d.player);
             state = d.state;

@@ -705,7 +705,7 @@
                 font-size: 9px; 
                 gap: 8px; 
                 border-radius: 12px;
-                border: 1px solid transparent;
+                border: none;
             }
             .nav-btn:hover { 
                 transform: none; 
@@ -4190,11 +4190,171 @@
             playSfx('click');
             if (requireAuth()) return;
 
+            // Generate and automatically download the sleek bet slip image
+            generateWinImage(parseFloat(betAmount), parseFloat(mult));
+
             socket.emit('share_bet', {
                 bet: parseFloat(betAmount),
                 mult: parseFloat(mult)
             });
         };
+
+        // --- NEW: PROFESSIONAL IMAGE GENERATOR (CANVAS) ---
+        function generateWinImage(betAmount, mult) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1080;
+            canvas.height = 1080;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Draw Sleek Dark Background (Radial Gradient)
+            const bg = ctx.createRadialGradient(540, 540, 100, 540, 540, 800);
+            bg.addColorStop(0, '#1a1c29');
+            bg.addColorStop(1, '#07070b');
+            ctx.fillStyle = bg;
+            ctx.fillRect(0, 0, 1080, 1080);
+
+            // 2. Draw Tech Grid (Subtle)
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.03)';
+            ctx.lineWidth = 2;
+            for (let i = 0; i <= 1080; i += 60) {
+                ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1080); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1080, i); ctx.stroke();
+            }
+
+            // 3. Draw Golden Border with Arcade Corner Accents
+            ctx.strokeStyle = '#ffd500';
+            ctx.lineWidth = 6;
+            ctx.strokeRect(30, 30, 1020, 1020);
+
+            ctx.lineWidth = 12;
+            ctx.beginPath(); ctx.moveTo(30, 80); ctx.lineTo(30, 30); ctx.lineTo(80, 30); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(1050, 80); ctx.lineTo(1050, 30); ctx.lineTo(1000, 30); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(30, 1000); ctx.lineTo(30, 1050); ctx.lineTo(80, 1050); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(1050, 1000); ctx.lineTo(1050, 1050); ctx.lineTo(1000, 1050); ctx.stroke();
+
+            // 4. Logo Generation (Centered)
+            ctx.font = '50px "Press Start 2P"';
+            const retroW = ctx.measureText("RETRO").width;
+            const crushW = ctx.measureText("CRUSH").width;
+            const spacing = 15;
+            const rocketW = 24 * 2.5; 
+            const totalLogoW = rocketW + 20 + retroW + spacing + crushW;
+            const startX = 540 - (totalLogoW / 2);
+
+            // Draw Rocket SVG natively on canvas
+            const rocketPath = new Path2D("M21.61 2.39C21.61 2.39 16.66 .269 11 5.93C8.81 8.12 7.5 10.53 6.65 12.64C6.37 13.39 6.56 14.21 7.11 14.77L9.24 16.89C9.79 17.45 10.61 17.63 11.36 17.35C13.5 16.5 15.88 15.19 18.07 13C23.73 7.34 21.61 2.39 21.61 2.39M14.54 9.46C13.44 10.56 11.64 10.56 10.54 9.46C9.44 8.36 9.44 6.56 10.54 5.46C11.64 4.36 13.44 4.36 14.54 5.46C15.64 6.56 15.64 8.36 14.54 9.46M13.13 22.19L11.5 18.36C13.07 17.78 14.54 17 15.9 16.09L13.13 22.19M5.64 12.5L1.81 10.87L7.91 8.1C7 9.46 6.22 10.93 5.64 12.5M8.88 16.53L7.47 15.12L3.18 19.41C2.79 19.8 2.79 20.43 3.18 20.82L3.89 21.53C4.28 21.92 4.91 21.92 5.3 21.53L8.88 16.53Z");
+            ctx.save();
+            ctx.translate(startX, 150 - 45);
+            ctx.scale(2.5, 2.5);
+            ctx.fillStyle = '#00f3ff';
+            ctx.fill(rocketPath);
+            ctx.restore();
+
+            // Draw Logo Text
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText("RETRO", startX + rocketW + 20, 150);
+            ctx.fillStyle = '#00f3ff';
+            ctx.shadowColor = 'rgba(0, 243, 255, 0.6)';
+            ctx.shadowBlur = 15;
+            ctx.fillText("CRUSH", startX + rocketW + 20 + retroW + spacing, 150);
+            ctx.shadowBlur = 0; // reset
+
+            // "SPACE" Badge
+            ctx.fillStyle = '#ffd500';
+            ctx.font = 'bold 30px "VT323"';
+            ctx.fillText(".SPACE", startX + rocketW + 20 + retroW + spacing + crushW + 10, 110);
+
+            // 5. Draw the "WINNER" Text
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '40px "Press Start 2P"';
+            const uname = myPlayer ? myPlayer.username.toUpperCase() : "PLAYER";
+            ctx.fillText(`${uname} CASHED OUT!`, 540, 320);
+
+            // 6. Draw Massive Multiplier (Color-Coded)
+            let multColor = '#39ff14'; // var(--green)
+            let multGlow = 'rgba(57, 255, 20, 0.6)';
+            if (mult >= 50) { multColor = '#ff00ea'; multGlow = 'rgba(255, 0, 234, 0.6)'; } // Magenta
+            else if (mult >= 10) { multColor = '#ffd500'; multGlow = 'rgba(255, 213, 0, 0.6)'; } // Yellow
+
+            ctx.font = '240px "VT323"';
+            ctx.fillStyle = multColor;
+            ctx.shadowColor = multGlow;
+            ctx.shadowBlur = 50;
+            ctx.fillText(mult.toFixed(2) + "x", 540, 560);
+            ctx.shadowBlur = 0;
+
+            // 7. Draw The Flex Ticket (Dashed Box) matching UI styling
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([15, 15]);
+
+            // Custom rounded rectangle for maximum browser compatibility
+            const rectX = 140, rectY = 660, rectW = 800, rectH = 220, r = 20;
+            ctx.beginPath();
+            ctx.moveTo(rectX + r, rectY);
+            ctx.lineTo(rectX + rectW - r, rectY);
+            ctx.arcTo(rectX + rectW, rectY, rectX + rectW, rectY + r, r);
+            ctx.lineTo(rectX + rectW, rectY + rectH - r);
+            ctx.arcTo(rectX + rectW, rectY + rectH, rectX + rectW - r, rectY + rectH, r);
+            ctx.lineTo(rectX + r, rectY + rectH);
+            ctx.arcTo(rectX, rectY + rectH, rectX, rectY + rectH - r, r);
+            ctx.lineTo(rectX, rectY + r);
+            ctx.arcTo(rectX, rectY, rectX + r, rectY, r);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.setLineDash([]); // reset dash
+
+            // 8. Add Stake & Payout Data inside the box
+            const payout = betAmount * mult;
+            const profit = payout - betAmount;
+
+            // STAKE (Left Side)
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#6c6f93'; 
+            ctx.font = '28px "Press Start 2P"';
+            ctx.fillText("STAKE", 200, 740);
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '80px "VT323"';
+            ctx.fillText("$" + betAmount.toFixed(2), 200, 830);
+
+            // PROFIT (Right Side)
+            ctx.textAlign = 'right';
+            ctx.fillStyle = '#6c6f93';
+            ctx.font = '28px "Press Start 2P"';
+            ctx.fillText("PROFIT", 880, 740);
+
+            ctx.fillStyle = '#39ff14';
+            ctx.shadowColor = 'rgba(57, 255, 20, 0.5)';
+            ctx.shadowBlur = 20;
+            ctx.font = '80px "VT323"';
+            ctx.fillText("+$" + profit.toFixed(2), 880, 830);
+            ctx.shadowBlur = 0;
+
+            // 9. Footer Info
+            ctx.textAlign = 'center';
+            ctx.fillStyle = '#5a5d7a';
+            ctx.font = '35px "VT323"';
+            const timeString = new Date().toLocaleString();
+            ctx.fillText(`VERIFIED CRYPTOGRAPHIC CRASH | ${timeString}`, 540, 970);
+
+            // 10. Generate and Download Image
+            const dataUrl = canvas.toDataURL("image/png");
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = `RetroCrush_Win_${mult.toFixed(2)}x.png`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            // Show toast feedback for the image download
+            const imageSvg = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" style="vertical-align: middle;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>`;
+            showToast(`${imageSvg} WIN CARD DOWNLOADED!`);
+        }
 
         socket.on('share_success', () => {
             playSfx('cashout');
